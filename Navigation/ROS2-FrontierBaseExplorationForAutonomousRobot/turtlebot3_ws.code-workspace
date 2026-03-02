@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "../../../../../turtlebot3_ws"
+		},
+		{
+			"path": "../../.."
+		}
+	],
+	"settings": {}
+}
