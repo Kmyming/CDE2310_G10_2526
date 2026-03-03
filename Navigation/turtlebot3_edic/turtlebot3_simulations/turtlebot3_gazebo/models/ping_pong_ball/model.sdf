@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<sdf version="1.5">
+  <model name="ping_pong_ball">
+    <pose>0 0 0.02 0 0 0</pose>
+    <link name="ball_link">
+      <inertial>
+        <mass>0.0027</mass>  <!-- Real ping pong ball mass: 2.7g -->
+        <inertia>
+          <ixx>4.32e-6</ixx>
+          <iyy>4.32e-6</iyy>
+          <izz>4.32e-6</izz>
+        </inertia>
+      </inertial>
+      
+      <collision name="ball_collision">
+        <geometry>
+          <sphere>
+            <radius>0.02</radius>  <!-- 40mm diameter ping pong ball -->
+          </sphere>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.5</mu>
+              <mu2>0.5</mu2>
+            </ode>
+          </friction>
+          <bounce>
+            <restitution_coefficient>0.8</restitution_coefficient>
+            <threshold>0.01</threshold>
+          </bounce>
+        </surface>
+      </collision>
+      
+      <visual name="ball_visual">
+        <geometry>
+          <sphere>
+            <radius>0.02</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>1 0.5 0 1</ambient>  <!-- Orange color -->
+          <diffuse>1 0.5 0 1</diffuse>
+          <specular>0.3 0.3 0.3 1</specular>
+          <shininess>20</shininess>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>
