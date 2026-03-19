@@ -1,15 +1,17 @@
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import OccupancyGrid , Odometry
+from rclpy.qos import qos_profile_sensor_data
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
 import numpy as np
 import heapq , math , random , yaml
 import scipy.interpolate as si
 import sys , threading , time
+import os
 
-
-with open("src/autonomous_exploration/config/params.yaml", 'r') as file:
+config_path = os.path.join(os.path.expanduser("~"), "turtlebot3_ws/src/autonomous_exploration/config/params.yaml")
+with open(config_path, 'r') as file:
     params = yaml.load(file, Loader=yaml.FullLoader)
 
 lookahead_distance = params["lookahead_distance"]
@@ -186,10 +188,10 @@ def dfs(matrix, i, j, group, groups):
     dfs(matrix, i - 1, j, group, groups)
     dfs(matrix, i, j + 1, group, groups)
     dfs(matrix, i, j - 1, group, groups)
-    dfs(matrix, i + 1, j + 1, group, groups) # sağ alt çapraz
-    dfs(matrix, i - 1, j - 1, group, groups) # sol üst çapraz
-    dfs(matrix, i - 1, j + 1, group, groups) # sağ üst çapraz
-    dfs(matrix, i + 1, j - 1, group, groups) # sol alt çapraz
+    dfs(matrix, i + 1, j + 1, group, groups) # right bottom diagonal
+    dfs(matrix, i - 1, j - 1, group, groups) # left top diagonal
+    dfs(matrix, i - 1, j + 1, group, groups) # right top diagonal
+    dfs(matrix, i + 1, j - 1, group, groups) # left bottom diagonal
     return group + 1
 
 def fGroups(groups):
@@ -206,7 +208,7 @@ def calculate_centroid(x_coords, y_coords):
     centroid = (int(mean_x), int(mean_y))
     return centroid
 
-#Bu fonksiyon en buyuk 5 gruptan target_error*2 uzaklıktan daha uzak olan ve robota en yakın olanı seçer.
+# This function selects the closest one to the robot from the largest 5 groups that are farther than target_error*2 distance.
 """
 def findClosestGroup(matrix,groups, current,resolution,originX,originY):
     targetP = None
@@ -226,7 +228,7 @@ def findClosestGroup(matrix,groups, current,resolution,originX,originY):
                 min_index = i
     if min_index != -1:
         targetP = paths[min_index]
-    else: #gruplar target_error*2 uzaklıktan daha yakınsa random bir noktayı hedef olarak seçer. Bu robotun bazı durumlardan kurtulmasını sağlar.
+    else: # If groups are closer than target_error*2 distance, select a random point as target. This helps the robot escape from certain situations.
         index = random.randint(0,len(groups)-1)
         target = groups[index][1]
         target = target[random.randint(0,len(target)-1)]
@@ -258,7 +260,7 @@ def findClosestGroup(matrix,groups, current,resolution,originX,originY):
                 max_score = i
     if max_score != -1:
         targetP = paths[max_score]
-    else: #gruplar target_error*2 uzaklıktan daha yakınsa random bir noktayı hedef olarak seçer. Bu robotun bazı durumlardan kurtulmasını sağlar.
+    else: # If groups are closer than target_error*2 distance, select a random point as target. This helps the robot escape from certain situations.
         index = random.randint(0,len(groups)-1)
         target = groups[index][1]
         target = target[random.randint(0,len(target)-1)]
@@ -291,19 +293,19 @@ def costmap(data,width,height,resolution):
     return data
 
 def exploration(data,width,height,resolution,column,row,originX,originY):
-        global pathGlobal #Global degisken
-        data = costmap(data,width,height,resolution) #Engelleri genislet
-        data[row][column] = 0 #Robot Anlık Konum
-        data[data > 5] = 1 # 0 olanlar gidilebilir yer, 100 olanlar kesin engel
-        data = frontierB(data) #Sınır noktaları bul
-        data,groups = assign_groups(data) #Sınır noktaları gruplandır
-        groups = fGroups(groups) #Grupları küçükten büyüğe sırala. En buyuk 5 grubu al
-        if len(groups) == 0: #Grup yoksa kesif tamamlandı
+        global pathGlobal # Global variable
+        data = costmap(data,width,height,resolution) # Expand obstacles
+        data[row][column] = 0 # Robot current position
+        data[data > 5] = 1 # 0s are passable areas, 100s are definite obstacles
+        data = frontierB(data) # Find frontier points
+        data,groups = assign_groups(data) # Group frontier points
+        groups = fGroups(groups) # Sort groups from small to large. Take the largest 5 groups
+        if len(groups) == 0: # If no group exists, exploration is completed
             path = -1
-        else: #Grup varsa en yakın grubu bul
-            data[data < 0] = 1 #-0.05 olanlar bilinmeyen yer. Gidilemez olarak isaretle. 0 = gidilebilir, 1 = gidilemez.
-            path = findClosestGroup(data,groups,(row,column),resolution,originX,originY) #En yakın grubu bul
-            if path != None: #Yol varsa BSpline ile düzelt
+        else: # If group exists, find the closest group
+            data[data < 0] = 1 # -0.05s are unknown areas. Mark as impassable. 0 = passable, 1 = impassable.
+            path = findClosestGroup(data,groups,(row,column),resolution,originX,originY) # Find the closest group
+            if path != None: # If path exists, smooth with BSpline
                 path = bspline_planning(path,len(path)*5)
             else:
                 path = -1
@@ -313,38 +315,52 @@ def exploration(data,width,height,resolution,column,row,originX,originY):
 def localControl(scan):
     v = None
     w = None
-    for i in range(60):
-        if scan[i] < robot_r:
-            v = 0.2
-            w = -math.pi/4 
-            break
-    if v == None:
-        for i in range(300,360):
-            if scan[i] < robot_r:
-                v = 0.2
-                w = math.pi/4
-                break
-    return v,w
+
+    if scan is None or len(scan) == 0:
+        return v, w
+
+    s = np.array(scan, dtype=float)
+    s = np.nan_to_num(s, nan=10.0, posinf=10.0, neginf=0.0)
+    n = len(s)
+
+    # front-left: first 1/6 of scan
+    left_end = max(1, n // 6)
+    for i in range(0, left_end):
+        if s[i] < robot_r:
+            return 0.2, -math.pi / 4
+
+    # front-right: last 1/6 of scan
+    right_start = max(0, n - n // 6)
+    for i in range(right_start, n):
+        if s[i] < robot_r:
+            return 0.2, math.pi / 4
+
+    return v, w
 
 
 class navigationControl(Node):
     def __init__(self):
         super().__init__('Exploration')
-        self.subscription = self.create_subscription(OccupancyGrid,'map',self.map_callback,10)
-        self.subscription = self.create_subscription(Odometry,'odom',self.odom_callback,10)
-        self.subscription = self.create_subscription(LaserScan,'scan',self.scan_callback,10)
+        self.subscription = self.create_subscription(OccupancyGrid, 'map', self.map_callback, 10)
+        self.subscription = self.create_subscription(Odometry, 'odom', self.odom_callback, 10)
+        self.subscription = self.create_subscription(
+            LaserScan,
+            'scan',
+            self.scan_callback,
+            qos_profile_sensor_data
+        )
         self.publisher = self.create_publisher(Twist, 'cmd_vel', 10)
-        print("[BILGI] KESİF MODU AKTİF")
-        self.kesif = True
-        threading.Thread(target=self.exp).start() #Kesif fonksiyonunu thread olarak calistirir.
+        print("[INFO] DISCOVERY MODE ACTIVE")
+        self.exploration_mode = True
+        threading.Thread(target=self.exp).start() # Runs the exploration function as a thread.
         
     def exp(self):
         twist = Twist()
-        while True: #Sensor verileri gelene kadar bekle.
+        while True: # Wait until sensor data arrives.
             if not hasattr(self,'map_data') or not hasattr(self,'odom_data') or not hasattr(self,'scan_data'):
                 time.sleep(0.1)
                 continue
-            if self.kesif == True:
+            if self.exploration_mode == True:
                 if isinstance(pathGlobal, int) and pathGlobal == 0:
                     column = int((self.x - self.originX)/self.resolution)
                     row = int((self.y- self.originY)/self.resolution)
@@ -353,34 +369,35 @@ class navigationControl(Node):
                 else:
                     self.path = pathGlobal
                 if isinstance(self.path, int) and self.path == -1:
-                    print("[BILGI] KESİF TAMAMLANDI")
+                    print("[INFO] DISCOVERY FINISHED")
                     sys.exit()
                 self.c = int((self.path[-1][0] - self.originX)/self.resolution) 
                 self.r = int((self.path[-1][1] - self.originY)/self.resolution) 
-                self.kesif = False
+                self.exploration_mode = False
                 self.i = 0
-                print("[BILGI] YENI HEDEF BELİRLENDI")
+                print("[INFO] NEW TARGET SELECTED")
                 t = pathLength(self.path)/speed
-                t = t - 0.2 #x = v * t formülüne göre hesaplanan sureden 0.2 saniye cikarilir. t sure sonra kesif fonksiyonu calistirilir.
-                self.t = threading.Timer(t,self.target_callback) #Hedefe az bir sure kala kesif fonksiyonunu calistirir.
+                t = t - 0.2 # 0.2 seconds are subtracted from the time calculated according to x = v * t formula. Exploration function is called after t time.
+                self.t = threading.Timer(t,self.target_callback) # Runs the exploration function shortly before reaching the target.
                 self.t.start()
             
-            #Rota Takip Blok Baslangic
+            # Route Following Block Start
             else:
                 v , w = localControl(self.scan)
                 if v == None:
-                    v, w,self.i = pure_pursuit(self.x,self.y,self.yaw,self.path,self.i)
+                    v, w, self.i = pure_pursuit(self.x, self.y, self.yaw, self.path, self.i)
+
                 if(abs(self.x - self.path[-1][0]) < target_error and abs(self.y - self.path[-1][1]) < target_error):
                     v = 0.0
                     w = 0.0
-                    self.kesif = True
-                    print("[BILGI] HEDEFE ULASILDI")
-                    self.t.join() #Thread bitene kadar bekle.
+                    self.exploration_mode = True
+                    print("[INFO] TARGET ACHIEVED")
+                    self.t.join() # Wait until thread finishes.
                 twist.linear.x = v
                 twist.angular.z = w
                 self.publisher.publish(twist)
                 time.sleep(0.1)
-            #Rota Takip Blok Bitis
+            # Route Following Block End
 
     def target_callback(self):
         exploration(self.data,self.width,self.height,self.resolution,self.c,self.r,self.originX,self.originY)
