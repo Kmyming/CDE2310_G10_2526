@@ -9,8 +9,14 @@ import heapq , math , random , yaml
 import scipy.interpolate as si
 import sys , threading , time
 import os
+from ament_index_python.packages import get_package_share_directory
 
-config_path = os.path.join(os.path.expanduser("~"), "turtlebot3_ws/src/autonomous_exploration/config/params.yaml")
+config_path = os.path.join(
+    get_package_share_directory('autonomous_exploration'),
+    'config',
+    'params.yaml'
+)
+
 with open(config_path, 'r') as file:
     params = yaml.load(file, Loader=yaml.FullLoader)
 
