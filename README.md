@@ -13,21 +13,26 @@
 
 ```bash
 cd ~/turtlebot3_ws/src
-git clone https://github.com/Kmyming/CDE2310_G10_2526.git autonomous_exploration
+git clone https://github.com/Kmyming/CDE2310_G10_2526.git CDE2310_G10_2526
 cd ~/turtlebot3_ws
 ```
 
-2. **Build the package using colcon:**
+2. **Build the auto_explore package using colcon:**
 
 ```bash
-colcon build --packages-select autonomous_exploration
+colcon build --packages-select auto_explore
 source install/setup.bash
 ```
 
 3. **Verify the build was successful:**
 
 ```bash
-ros2 pkg list | grep autonomous_exploration
+ros2 pkg list | grep auto_explore
+```
+
+Expected output:
+```
+auto_explore
 ```
 
 
@@ -47,46 +52,66 @@ colcon build --packages-select auto_explore
 source install/setup.bash
 ```
 
-### Launch the System
+### Launch Sequences
 
-Use the provided launch wrapper script:
+#### Gazebo Simulation
+
+**Terminal 1:** Launch default Gazebo world
 
 ```bash
-# Gazebo simulation environment (Terminal 1 - optional, run separately)
 export TURTLEBOT3_MODEL=burger
 ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
-
-# Launch auto_explore system (Terminal 2)
-# Use the wrapper script to properly set up the environment
-cd ~/turtlebot3_ws/src/CDE2310_G10_2526/remote_laptop_src
-./launch_auto_explore.sh global_bringup.py use_sim_time:=true enable_markers:=true
 ```
 
-This launches:
-- SLAM Toolbox (mapping)
-- RViz (visualization)
-- FSM Controller (mission state machine)
-- Exploration Controller (frontier-based navigation)
-- ArUco Marker Detection (pose publisher)
-- Marker Logger (logging marker detections to ./logs/)
-
-### Launch Command Options
+**Terminal 2:** Launch auto_explore mission control system
 
 ```bash
-# Default (everything enabled)
-./launch_auto_explore.sh global_bringup.py use_sim_time:=true
+ros2 launch auto_explore global_bringup.py \
+  use_sim_time:=true \
+  enable_slam:=true \
+  enable_rviz:=true \
+  enable_markers:=true
+```
 
-# Without markers
-./launch_auto_explore.sh global_bringup.py use_sim_time:=true enable_markers:=false
+#### Physical TurtleBot3 Robot
 
-# Without RViz visualization
-./launch_auto_explore.sh global_bringup.py use_sim_time:=true enable_rviz:=false
+**Terminal 1:** Run TurtleBot3 bringup
 
-# Real robot (disables simulation clock)
-./launch_auto_explore.sh global_bringup.py use_sim_time:=false
+```bash
+# If 'rosbu' alias is set up:
+rosbu
 
-# View available launch arguments
-./launch_auto_explore.sh global_bringup.py --show-args
+# Otherwise:
+ros2 launch turtlebot3_bringup robot.launch.py
+```
+
+**Terminal 2:** Launch auto_explore mission control system
+
+```bash
+ros2 launch auto_explore global_bringup.py \
+  use_sim_time:=false \
+  enable_slam:=true \
+  enable_rviz:=true \
+  enable_markers:=true
+```
+
+### Launch Components
+
+This launches:
+- **SLAM Toolbox** (mapping) - enabled with `enable_slam:=true`
+- **RViz** (visualization) - enabled with `enable_rviz:=true`
+- **FSM Controller** (mission state machine)
+- **Exploration Controller** (frontier-based autonomous navigation)
+- **ArUco Marker Detection** (pose publisher) - enabled with `enable_markers:=true`
+- **Marker Logger** (logging marker detections to `./logs/`)
+
+### Launch Arguments
+
+```bash
+use_sim_time:=true|false      # Use Gazebo time (true) or real time (false)
+enable_slam:=true|false        # Enable SLAM Toolbox mapping
+enable_rviz:=true|false        # Enable RViz visualization
+enable_markers:=true|false     # Enable ArUco marker detection
 ```
 
 ### Architecture
@@ -104,6 +129,25 @@ The `auto_explore` package contains:
 ---
 
 ## LEGACY: Manual Launch (For Reference)
+
+### Installation (Legacy - autonomous_exploration package)
+
+If you want to use the old `autonomous_exploration` package:
+
+```bash
+cd ~/turtlebot3_ws/src
+git clone https://github.com/Kmyming/CDE2310_G10_2526.git autonomous_exploration
+cd ~/turtlebot3_ws
+colcon build --packages-select autonomous_exploration
+source install/setup.bash
+```
+
+Verify:
+```bash
+ros2 pkg list | grep autonomous_exploration
+```
+
+### Manual Component Launch
 
 If you prefer to run components separately:
 
