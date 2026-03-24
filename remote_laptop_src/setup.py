@@ -7,7 +7,8 @@ package_name = 'auto_explore'
 setup(
     name=package_name,
     version='0.0.0',
-    packages=find_packages(exclude=['test']),
+    package_dir={'': 'auto_explore'},
+    packages=find_packages(where='auto_explore', exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
