@@ -189,6 +189,8 @@ The pipeline is powered by a custom GitHub Action running **Qodo Merge (PR-Agent
 To ensure our documentation remains perfectly synced with our codebase, all team members must follow this workflow when merging code into the `main` branch.
 
 ### 1. Write Conventional Commits
+Make sure you are editing on your **LOCAL BRANCH** and not the `main` branch!
+
 The AI agent calculates the next version number strictly based on the prefixes used in your commit messages and PR title. You **must** use one of the following prefixes:
 
 * `feat: ` (New features, architectural additions, nodes. 'MAJOR CHANGE' is to be included in the commit message for MAJOR versioning, else it defaults to MINOR versioning)
@@ -218,5 +220,5 @@ Once you are satisfied with your code and ready to merge, reply to the PR commen
 ## 🏗️ Architecture
 - **Trigger:** GitHub Pull Requests (Open, Reopen, Synchronize).
 - **Engine:** GitHub Actions (`.github/workflows/pr_agent.yml`).
-- **AI Model:** Google Gemini 1.5 Flash.
+- **AI Model:** Google Gemini 2.5 Flash.
 - **Rules Engine:** `.pr_agent.toml` (Contains strict LLM prompting for ROS 2 context and SemVer logic).
