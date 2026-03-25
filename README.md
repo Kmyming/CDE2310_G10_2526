@@ -214,7 +214,10 @@ Once you are satisfied with your code and ready to merge, reply to the PR commen
 ```text
 /update_changelog
 ```
-
+if you have Github CLI:
+```bash
+gh pr create --title "$(git log -1 --pretty=%s)" --body "/update_changelog"
+```
 ---
 
 ## 🏗️ Architecture

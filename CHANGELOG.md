@@ -11,6 +11,7 @@ Complete architectural refactor: Independent `auto_explore` mission control syst
 - feat(markers): Port marker logging system from legacy to `pose_subscriber.py`
 - feat(config): Create local `config/params.yaml` for exploration parameter tuning (lookahead_distance, speed, expansion_size, target_error, robot_r)
 - feat(package): Implement proper ROS2 ament_python package structure with correct buildtool_depend and export section
+- feat(DevOps): Created automated CI/CD Pipeline for changelog documentation
 
 ### Changed
 - refactor(architecture): Refactored entire mission control system from nested repository structure to independent package
