@@ -215,8 +215,8 @@ Once you are satisfied with your code and ready to merge, reply to the PR commen
 /update_changelog
 ```
 if you have Github CLI:
-```text
-gh pr create -b /update_changelog
+```bash
+gh pr create -b "/update_changelog"
 ```
 ---
 
