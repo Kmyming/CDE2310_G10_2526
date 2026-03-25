@@ -129,7 +129,7 @@ The `auto_explore` package contains:
 
 ---
 
-## LEGACY: Manual Launch (For Reference)
+## LEGACY: Manual Launch (For Testbedding & Reference)
 
 ### Installation (Legacy - autonomous_exploration package)
 
