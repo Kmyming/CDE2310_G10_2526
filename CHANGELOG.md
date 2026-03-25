@@ -24,19 +24,16 @@ Complete architectural refactor: Independent `auto_explore` mission control syst
 - docs(README): Keep legacy instructions for `autonomous_exploration` package for reference
 
 ### Changed
-- Refactored entire mission control system from nested repository structure to independent package
-- Updated package discovery mechanism to use ROS2 standard conventions
-- Cleaned up XML validation issues in package.xml
+- refactor(architecture): Refactored entire mission control system from nested repository structure to independent package
+- refactor(package): Updated package discovery mechanism to use ROS2 standard conventions
 
 ### Fixed
-- Fixed package discovery: Changed from `(python)` to `(ros.ament_python)` type
-- Fixed XML parsing errors in package.xml by removing mixed depend/exec_depend entries
-- Fixed launch wrapper script dependency by properly registering package with ROS2
-
-### Removed
-- Removed wrapper script dependency (`launch_auto_explore.sh`) - now uses direct `ros2 launch` command
-- Removed redundant exec_depend entries from package.xml
-- Cleaned up orphaned RViz configuration files
+- fix(discovery): Fixed package discovery type changed from `(python)` to `(ros.ament_python)`
+- fix(package): Resolved XML parsing errors by removing mixed depend/exec_depend entries
+- fix(launcher): Fixed launch wrapper script dependency by properly registering package with ROS2
+- fix(setup): Removed wrapper script dependency - now uses direct `ros2 launch` command
+- fix(config): Removed redundant exec_depend entries from package.xml
+- fix(rviz): Cleaned up orphaned RViz configuration files
 
 ### Technical Details
 - **Package Name:** `auto_explore`
