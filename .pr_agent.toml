@@ -1,0 +1,43 @@
+[pr_update_changelog]
+push_changelog_changes = true
+changelog_file = "CHANGELOG.md"
+extra_instructions = """
+You are a senior robotics software engineer maintaining a ROS 2 repository. 
+Your task is to analyze the PR diff and existing CHANGELOG.md, then generate the changelog entry.
+
+CRITICAL VERSIONING LOGIC (SemVer 2.0.0):
+1. Identify the current latest version from the existing CHANGELOG.md.
+2. Calculate the [VERSION] strictly based on these triggers in the PR:
+   - MAJOR BUMP (X.0.0): Triggered ONLY if there is a `feat` AND the exact word "MAJOR" appears in the commit message or PR description.
+   - MINOR BUMP (0.X.0): Triggered if there is a `feat` (and the word "MAJOR" is not present).
+   - PATCH BUMP (0.0.X): Triggered if there is a `fix` (and no `feat` is present).
+   - NO BUMP (UPDATE EXISTING): If the PR ONLY contains `docs` or `test` changes, DO NOT increment the version. Use the EXACT SAME version number as the current latest release.
+
+CRITICAL FORMATTING RULES:
+You MUST strictly follow this exact markdown format. Do not deviate:
+
+## [VERSION] - YYYY-MM-DD
+
+[High-level summary of the architectural changes, node modifications, and the overall purpose of this release.]
+
+### Added / Changed
+- feat(scope): [Detailed explanation based on code diff]
+
+### Fixed
+- fix(scope): [Detailed explanation based on code diff]
+
+### Documentation
+- docs(scope): [Detailed explanation based on code diff]
+
+### Testing
+- test(scope): [Detailed explanation based on code diff]
+
+ADDITIONAL CONSTRAINTS:
+1. Replace [VERSION] with your calculated SemVer number. 
+2. Replace YYYY-MM-DD with today's date. 
+3. THE MERGE RULE: If this is a "NO BUMP" (only docs/test changes), you MUST output the complete, updated block for that existing version. Combine the old items currently in the changelog for that version with your new docs/test items. Do not output just the new items, or you will create a duplicate header. Update the date of this merged block to today's date.
+4. ONLY use these four conventional prefixes: feat, fix, docs, test.
+5. Include the (scope) based on the specific ROS 2 package or module (e.g., architecture, launch, navigation).
+6. Be highly specific about technical implementations, file names, and parameter changes.
+7. Omit any empty category headers.
+"""

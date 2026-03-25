@@ -1,3 +1,4 @@
+# Note: Full integrated marker detection coming soon.
 # Setup Instructions
 
 ## Prerequisites
