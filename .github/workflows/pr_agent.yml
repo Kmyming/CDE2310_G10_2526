@@ -19,7 +19,8 @@ jobs:
         uses: qodo-ai/pr-agent@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # Instruct the agent to use Gemini instead of OpenAI
-          config.model: "gemini/gemini-1.5-flash"
-          config.fallback_models: '["gemini/gemini-1.5-flash"]'
+          # The mandatory Qodo prefix for Gemini keys:
+          GOOGLE_AI_STUDIO__GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Bulletproof double-underscore formatting:
+          CONFIG__MODEL: "gemini/gemini-1.5-flash"
+          CONFIG__FALLBACK_MODELS: '["gemini/gemini-1.5-flash"]'
