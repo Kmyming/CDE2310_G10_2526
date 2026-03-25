@@ -201,6 +201,9 @@ The AI agent calculates the next version number strictly based on the prefixes u
 ### 2. Open a Pull Request
 
 Push your code to your **LOCAL BRANCH** and push that branch to GitHub.
+```bash
+git push origin [local_branch_name]
+```
 Open a Pull Request against `main`. 
 * **The Auto-Review:** The GitHub Action will immediately wake up, analyze your code diffs, and post a summary of your changes as a comment on the PR. **VERIFY** the documentation on your own and make necessary edits.
 
