@@ -12,6 +12,7 @@ Complete architectural refactor: Independent `auto_explore` mission control syst
 - feat(config): Create local `config/params.yaml` for exploration parameter tuning (lookahead_distance, speed, expansion_size, target_error, robot_r)
 - feat(package): Implement proper ROS2 ament_python package structure with correct buildtool_depend and export section
 - feat(DevOps): Created automated CI/CD Pipeline for changelog documentation
+- feat(payload): finalised v1 of payload assembly
 
 ### Changed
 - refactor(architecture): Refactored entire mission control system from nested repository structure to independent package
