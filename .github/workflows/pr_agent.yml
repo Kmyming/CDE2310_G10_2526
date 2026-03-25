@@ -19,8 +19,11 @@ jobs:
         uses: qodo-ai/pr-agent@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # The mandatory Qodo prefix for Gemini keys:
+          # Supply the key natively and via the Qodo prefix
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GOOGLE_AI_STUDIO__GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # Bulletproof double-underscore formatting:
-          CONFIG__MODEL: "gemini/gemini-1.5-flash"
-          CONFIG__FALLBACK_MODELS: '["gemini/gemini-1.5-flash"]'
+          # Force lowercase double-underscores for the model parameters
+          config__model: "gemini/gemini-1.5-flash"
+          config__fallback_models: '["gemini/gemini-1.5-flash"]'
+          # Turn on maximum logging
+          config__log_level: "DEBUG"
