@@ -174,4 +174,4 @@ rviz2 -d ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartogr
 
 ```bash
 ros2 run autonomous_exploration control
-```Note: Full Marker detection script coming soon.
+```
