@@ -23,7 +23,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GOOGLE_AI_STUDIO__GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           # Force lowercase double-underscores for the model parameters
-          config__model: "gemini/gemini-1.5-flash"
-          config__fallback_models: '["gemini/gemini-1.5-flash"]'
+          config__model: "gemini/gemini-2.5-flash"
+          config__fallback_models: '["gemini/gemini-2.5-flash"]'
           # Turn on maximum logging
           config__log_level: "DEBUG"
