@@ -23,13 +23,16 @@ jobs:
           else
             echo "✅ SUCCESS: GitHub Actions successfully loaded a secret string!"
           fi
-          
+
       - name: Run PR Agent
         uses: qodo-ai/pr-agent@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GOOGLE_AI_STUDIO__GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          config__model: "gemini/gemini-2.5-flash"
-          config__fallback_models: '["gemini/gemini-2.5-flash"]'
-          config__log_level: "DEBUG"
+          # 1. Satisfy Qodo's core validation check so it doesn't drop the process
+          OPENAI_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # 2. Map the Google key using exact dot-notation
+          GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # 3. Target the correct 2.5 model using dot-notation
+          config.model: "gemini/gemini-2.5-flash"
+          config.fallback_models: '["gemini/gemini-2.5-flash"]'
+          config.log_level: "DEBUG"
