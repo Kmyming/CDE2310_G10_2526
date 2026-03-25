@@ -176,3 +176,44 @@ rviz2 -d ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartogr
 ```bash
 ros2 run autonomous_exploration control
 ```
+
+# CI/CD & Automated Changelog Infrastructure
+
+This repository utilizes an automated Continuous Integration (CI) pipeline to standardize our release documentation, enforce Semantic Versioning (SemVer 2.0.0), and reduce administrative overhead. 
+
+The pipeline is powered by a custom GitHub Action running **Qodo Merge (PR-Agent)**, utilizing the **Google Gemini API** to analyze ROS 2 code diffs and automatically generate highly detailed `CHANGELOG.md` updates.
+
+
+## 🛠️ The Developer Workflow
+
+To ensure our documentation remains perfectly synced with our codebase, all team members must follow this workflow when merging code into the `main` branch.
+
+### 1. Write Conventional Commits
+The AI agent calculates the next version number strictly based on the prefixes used in your commit messages and PR title. You **must** use one of the following prefixes:
+
+* `feat: ` (New features, architectural additions, nodes. 'MAJOR CHANGE' is to be included in the commit message for MAJOR versioning, else it defaults to MINOR versioning)
+* `fix: ` (Bug fixes, path resolutions, logic errors)
+* `docs: ` (Updates to README, comments, or documentation)
+* `test: ` (Adding or updating tests/simulations)
+
+*Example: `feat(navigation): integrate frontier exploration algorithm`*
+
+### 2. Open a Pull Request
+
+Push your code to your **LOCAL BRANCH** and push that branch to GitHub.
+Open a Pull Request against `main`. 
+* **The Auto-Review:** The GitHub Action will immediately wake up, analyze your code diffs, and post a summary of your changes as a comment on the PR. **VERIFY** the documentation on your own and make necessary edits.
+
+### 3. Trigger the Changelog Update
+Once you are satisfied with your code and ready to merge, reply to the PR comment section with this exact command:
+```text
+/update_changelog
+```
+
+---
+
+## 🏗️ Architecture
+- **Trigger:** GitHub Pull Requests (Open, Reopen, Synchronize).
+- **Engine:** GitHub Actions (`.github/workflows/pr_agent.yml`).
+- **AI Model:** Google Gemini 1.5 Flash.
+- **Rules Engine:** `.pr_agent.toml` (Contains strict LLM prompting for ROS 2 context and SemVer logic).
