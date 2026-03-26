@@ -1,0 +1,38 @@
+name: Qodo Merge AI Agent
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  pr_agent_job:
+    if: ${{ github.event.sender.type != 'Bot' }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: write
+    steps:
+      - name: Verify Secret Exists
+        run: |
+          if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then
+            echo "🚨 FATAL ERROR: GitHub Actions sees an EMPTY secret. The key is missing!"
+            exit 1
+          else
+            echo "✅ SUCCESS: GitHub Actions successfully loaded a secret string!"
+          fi
+
+      - name: Run PR Agent
+        uses: qodo-ai/pr-agent@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 1. Satisfy Qodo's core validation check so it doesn't drop the process
+          OPENAI_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # 2. Map the Google key using exact dot-notation
+          GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # 3. Target the correct 2.5 model using dot-notation
+          config.model: "gemini/gemini-2.5-flash"
+          config.fallback_models: '["gemini/gemini-2.5-flash"]'
+          config.log_level: "DEBUG"
