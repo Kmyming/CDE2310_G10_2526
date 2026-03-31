@@ -72,7 +72,3 @@ jobs:
           config.model: "gemini/gemini-2.5-flash"
           config.fallback_models: '["gemini/gemini-2.5-flash"]'
           config.log_level: "DEBUG"
-          github_action_config.auto_review: "false"
-          github_action_config.auto_describe: "false"
-          github_action_config.auto_improve: "false"
-          github_action_config.pr_actions: "['update_changelog']"
