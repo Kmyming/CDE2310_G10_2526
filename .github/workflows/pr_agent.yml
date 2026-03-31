@@ -32,20 +32,17 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          # 1. Fetch all commit messages in this PR and format them as bullet points
-          COMMITS=$(gh api repos/$REPO/pulls/$PR_NUMBER/commits --jq '.[].commit.message' | sed 's/^/- /')
-          
-          # 2. Fetch the current PR description
+          # Fetch commits and current body
+          COMMITS=$(gh pr view $PR_NUMBER --json commits --jq '.commits[].messageHeadline' | sed 's/^/- /')
           CURRENT_BODY=$(gh pr view $PR_NUMBER --json body --jq '.body')
+          if [ -z "$CURRENT_BODY" ]; then CURRENT_BODY=" "; fi
           
-          # 3. Strip out any old auto-generated logs to prevent duplicates if you push more code later
+          # Clean old logs and write to text file
           CLEAN_BODY=$(echo "$CURRENT_BODY" | awk '/### 🤖 Auto-Generated Commit Log/{exit} {print}')
-          
-          # 4. Combine the clean description with the fresh commit list
-          NEW_BODY=$(printf "%s\n\n### 🤖 Auto-Generated Commit Log\n%s" "$CLEAN_BODY" "$COMMITS")
-          
-          # 5. Update the PR description live on GitHub
-          gh pr edit $PR_NUMBER --body "$NEW_BODY"
+          echo "$CLEAN_BODY" > pr_body.txt
+          echo "" >> pr_body.txt
+          echo "### 🤖 Auto-Generated Commit Log" >> pr_body.txt
+          echo "$COMMITS" >> pr_body.tx
       # ------------------------------------
 
       - name: Run PR Agent

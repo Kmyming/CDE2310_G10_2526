@@ -1,4 +1,8 @@
 [github_action_config]
+# This block tells Qodo to run automatically on PR open
+auto_review = false
+auto_describe = false
+auto_improve = false
 pr_actions = ["update_changelog"]
 
 [pr_update_changelog]
@@ -35,6 +39,7 @@ Find the HIGHEST existing version number in the file. Use it as your baseline.
 
 THE BINARY BLINDSPOT:
 If the code diff is empty or only shows binary files (.SLDPRT, .SLDASM, .STL), you MUST rely entirely on the PR Title and PR Description to understand the physical hardware changes. Log them as `feat(cad)` or `fix(cad)`. NEVER output empty bullet points; if a category has no changes, omit the header entirely.
+
 ADDITIONAL CONSTRAINTS:
 1. Replace [VERSION] with your calculated SemVer number. 
 2. Replace YYYY-MM-DD with today's date. 
