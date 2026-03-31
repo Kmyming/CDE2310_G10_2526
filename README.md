@@ -228,13 +228,6 @@ If you need the AI to re-run a specific task, you can type any of these commands
 * `/improve` - Scans for new inline code improvements.
 * `/ask [question]` - Ask the AI a specific question about the PR's code.
 
-### 3. Trigger the Changelog Update
-Once you are satisfied with your code and ready to merge, reply to the PR comment section with this exact command:
-```text
-/update_changelog
-```
----
-
 ## 🏗️ AI Pipeline Architecture
 
 This repository utilizes a highly customized, hardware-aware CI/CD pipeline, reads binary CAD diffs (e.g., SolidWorks, STL files) by using a pre-processing commit scraper combined with a native Python implementation of [Qodo PR-Agent](https://github.com/qodo-ai/pr-agent), powered by **Google Gemini 2.5 Flash**.
