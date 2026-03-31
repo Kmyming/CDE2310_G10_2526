@@ -193,7 +193,7 @@ Make sure you are editing on your **LOCAL BRANCH** and not the `main` branch!
 
 The AI agent calculates the next version number strictly based on the prefixes used in your commit messages and PR title. You **must** use one of the following prefixes:
 
-* `feat: ` (New features, architectural additions, nodes. 'MAJOR CHANGE' is to be included in the commit message for MAJOR versioning, else it defaults to MINOR versioning)
+* `feat: ` (New features, architectural additions, nodes. 'MAJOR' is to be included in the commit message for MAJOR versioning, else it defaults to MINOR versioning)
 * `fix: ` (Bug fixes, path resolutions, logic errors)
 * `docs: ` (Updates to README, comments, or documentation)
 * `test: ` (Adding or updating tests/simulations)
