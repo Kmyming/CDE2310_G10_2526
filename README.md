@@ -177,11 +177,15 @@ rviz2 -d ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartogr
 ros2 run autonomous_exploration control
 ```
 
-# CI/CD & Automated Changelog Infrastructure
+# CI/CD & Automated AI Code Review & Changelog Infrastructure
 
-This repository utilizes an automated Continuous Integration (CI) pipeline to standardize our release documentation, enforce Semantic Versioning (SemVer 2.0.0), and reduce administrative overhead. 
+This repository uses a custom CI/CD pipeline powered by [Qodo PR-Agent](https://github.com/qodo-ai/pr-agent) and Google's **Gemini 2.5 Flash** model to automate pull request management and documentation, standardize our release documentation, enforce Semantic Versioning (SemVer 2.0.0), and reduce administrative overhead. 
 
-The pipeline is powered by a custom GitHub Action running **Qodo Merge (PR-Agent)**, utilizing the **Google Gemini API** to analyze ROS 2 code diffs and automatically generate highly detailed `CHANGELOG.md` updates.
+Whenever a new Pull Request is opened, the pipeline automatically executes the following suite:
+1. **Hardware-Aware Commit Scraping:** Bypasses Git's "binary blindspot" by scraping local git history to document physical CAD changes (`.SLDPRT`, `.STL`, etc.) before the AI runs.
+2. **Auto-Describe:** Analyzes the code diff and commit history to automatically write a comprehensive PR Title and Description.
+3. **Auto-Review & Improve:** Scans the code for bugs and leaves actionable, inline code suggestions.
+4. **Auto-Changelog:** Generates a strict, version-bumped `CHANGELOG.md` block based on your branch's features and fixes.
 
 
 ## 🛠️ The Developer Workflow
@@ -198,6 +202,8 @@ The AI agent calculates the next version number strictly based on the prefixes u
 * `docs: ` (Updates to README, comments, or documentation)
 * `test: ` (Adding or updating tests/simulations)
 
+for hardware/CAD changes: **BE DESCRIPTIVE** in your commit messages as the CHANGELOG.md will be updated based on your commit messages.
+
 *Example: `feat(navigation): integrate frontier exploration algorithm`*
 
 ### 2. Open a Pull Request
@@ -207,21 +213,47 @@ Push your code to your **LOCAL BRANCH** and push that branch to GitHub.
 git push origin [local_branch_name]
 ```
 Open a Pull Request against `main`. 
-* **The Auto-Review:** The GitHub Action will immediately wake up, analyze your code diffs, and post a summary of your changes as a comment on the PR. **VERIFY** the documentation on your own and make necessary edits.
+if you have Github CLI:
+```bash
+gh pr create --fill
+```
+(auto-fills latest commit message as title)
+* **The Auto-Review & changelog update:** The GitHub Action will immediately wake up, analyze your code diffs, and post a summary of your changes as a comment on the PR. **VERIFY** the documentation on your own and make necessary edits.
+
+**Manual Commands:**
+If you need the AI to re-run a specific task, you can type any of these commands as a standard comment in your Pull Request thread:
+* `/update_changelog` - Regenerates the changelog.
+* `/describe` - Regenerates the PR description.
+* `/review` - Re-runs the high-level review.
+* `/improve` - Scans for new inline code improvements.
+* `/ask [question]` - Ask the AI a specific question about the PR's code.
 
 ### 3. Trigger the Changelog Update
 Once you are satisfied with your code and ready to merge, reply to the PR comment section with this exact command:
 ```text
 /update_changelog
 ```
-if you have Github CLI:
-```bash
-gh pr create --title "$(git log -1 --pretty=%s)" --body "/update_changelog"
-```
 ---
 
-## 🏗️ Architecture
-- **Trigger:** GitHub Pull Requests (Open, Reopen, Synchronize).
-- **Engine:** GitHub Actions (`.github/workflows/pr_agent.yml`).
-- **AI Model:** Google Gemini 2.5 Flash.
-- **Rules Engine:** `.pr_agent.toml` (Contains strict LLM prompting for ROS 2 context and SemVer logic).
+## 🏗️ AI Pipeline Architecture
+
+This repository utilizes a highly customized, hardware-aware CI/CD pipeline, reads binary CAD diffs (e.g., SolidWorks, STL files) by using a pre-processing commit scraper combined with a native Python implementation of [Qodo PR-Agent](https://github.com/qodo-ai/pr-agent), powered by **Google Gemini 2.5 Flash**.
+
+### Data Flow Diagram
+
+```mermaid
+sequenceDiagram
+    actor Developer
+    participant GitHub as GitHub Actions
+    participant Scraper as Context Scraper (Bash)
+    participant Agent as PR-Agent CLI (Python)
+    participant Gemini as Gemini 2.5 Flash
+
+    Developer->>GitHub: Open PR or Post Comment
+    GitHub->>Scraper: Trigger Workflow (fetch-depth: 0)
+    Scraper->>GitHub: Read git log & inject commits into PR Body
+    GitHub->>Agent: Initialize raw Python environment
+    Agent->>Gemini: Send code diff + commit history payload
+    Note right of Agent: 1,000,000 token limit override
+    Gemini-->>Agent: Return generated reviews & changelog
+    Agent->>GitHub: Update PR Description, Post Reviews, Update CHANGELOG.md

@@ -15,6 +15,13 @@ jobs:
       pull-requests: write
       contents: write
     steps:
+    # --- MISSING STEP RESTORED ---
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
+      # -----------------------------
+
       - name: Verify Secret Exists
         run: |
           if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then
@@ -30,21 +37,61 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          # Fetch commits and current body
-          COMMITS=$(gh pr view $PR_NUMBER --json commits --jq '.commits[].messageHeadline' | sed 's/^/- /')
+          # Force Git to download the base branch so we can compare against it
+          git fetch origin $BASE_REF
+          
+          # Fetch commits instantly from the local git tree
+          COMMITS=$(git log origin/$BASE_REF..HEAD --pretty=format:"- %s")
+          
+          # Fetch current PR body
           CURRENT_BODY=$(gh pr view $PR_NUMBER --json body --jq '.body')
           if [ -z "$CURRENT_BODY" ]; then CURRENT_BODY=" "; fi
           
-          # Clean old logs and write to text file
+          # Clean old logs and safely write to text file
           CLEAN_BODY=$(echo "$CURRENT_BODY" | awk '/### 🤖 Auto-Generated Commit Log/{exit} {print}')
           echo "$CLEAN_BODY" > pr_body.txt
           echo "" >> pr_body.txt
           echo "### 🤖 Auto-Generated Commit Log" >> pr_body.txt
-          echo "$COMMITS" >> pr_body.tx
-      # ------------------------------------
+          echo "$COMMITS" >> pr_body.txt
+          
+          # Push the text file to update the PR
+          gh pr edit $PR_NUMBER --body-file pr_body.txt
 
+# --- 2. NATIVE PYTHON CLI (Bypasses Docker & Actions) ---
+      - name: Setup Python
+        if: github.event_name == 'pull_request'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install PR Agent
+        if: github.event_name == 'pull_request'
+        run: pip install pr-agent
+
+      - name: Run Changelog Script
+        if: github.event_name == 'pull_request'
+        env:
+          # OPENAI_KEY: ${{ secrets.GEMINI_API_KEY }} # Dummy fallback
+          # config.model: "gemini/gemini-2.5-flash"
+          # PR_AGENT_CONFIG__MODEL: "gemini/gemini-2.5-flash"
+          # PR_AGENT_CONFIG__FALLBACK_MODELS: '["gemini/gemini-2.5-flash"]'
+          github.user_token: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} 
+        run: |
+          python -m pr_agent.cli --pr_url=${{ github.event.pull_request.html_url }} update_changelog --config.model="gemini/gemini-2.5-flash" --config.fallback_models="['gemini/gemini-2.5-flash']" --config.custom_model_max_tokens=1000000
+
+          # 2. Describe PR (Auto-updates the title and body based on the diff)
+          python -m pr_agent.cli --pr_url=${{ github.event.pull_request.html_url }} describe --config.model="gemini/gemini-2.5-flash" --config.fallback_models="['gemini/gemini-2.5-flash']" --config.custom_model_max_tokens=1000000
+          
+          # 3. Review PR (Provides a high-level summary and catches bugs)
+          python -m pr_agent.cli --pr_url=${{ github.event.pull_request.html_url }} review --config.model="gemini/gemini-2.5-flash" --config.fallback_models="['gemini/gemini-2.5-flash']" --config.custom_model_max_tokens=1000000
+          
+          # 4. Improve Code (Leaves inline comments with actionable code suggestions)
+          python -m pr_agent.cli --pr_url=${{ github.event.pull_request.html_url }} improve --config.model="gemini/gemini-2.5-flash" --config.fallback_models="['gemini/gemini-2.5-flash']" --config.custom_model_max_tokens=1000000
+# --- 3. MANUAL COMMENT LISTENER (Allows /update_changelog in chat) ---
       - name: Run PR Agent
         uses: qodo-ai/pr-agent@main
         env:
