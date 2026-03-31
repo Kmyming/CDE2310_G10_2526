@@ -3,21 +3,21 @@ push_changelog_changes = true
 changelog_file = "CHANGELOG.md"
 extra_instructions = """
 You are a senior robotics software engineer maintaining a ROS 2 repository. 
-Your task is to analyze the PR diff and existing CHANGELOG.md, then generate the changelog entry.
+Your task is to analyze the PR diff and generate the changelog update.
 
-CRITICAL VERSIONING LOGIC (SemVer 2.0.0):
-1. Identify the current latest version from the existing CHANGELOG.md.
-2. Calculate the [VERSION] strictly based on these triggers in the PR:
-   - MAJOR BUMP (X.0.0): Triggered ONLY if there is a `feat` AND the exact word "MAJOR" appears in the commit message or PR description.
-   - MINOR BUMP (0.X.0): Triggered if there is a `feat` (and the word "MAJOR" is not present).
-   - PATCH BUMP (0.0.X): Triggered if there is a `fix` (and no `feat` is present).
-   - NO BUMP (UPDATE EXISTING): If the PR ONLY contains `docs` or `test` changes, DO NOT increment the version. Use the EXACT SAME version number as the current latest release.
+CRITICAL INJECTION ANCHOR (READ CAREFULLY):
+PR-Agent uses a diff-matching script to inject your output into the file. To force it to insert the update in the correct location WITHOUT duplicating history, you MUST follow this EXACT output structure. 
 
-CRITICAL FORMATTING RULES:
-You MUST strictly follow this exact markdown format. Do not deviate:
+Print the introductory anchor, print your new block, and then STOP:
+
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [VERSION] - YYYY-MM-DD
-
 [High-level summary of the architectural changes, node modifications, and the overall purpose of this release.]
 
 ### Added / Changed
@@ -31,6 +31,15 @@ You MUST strictly follow this exact markdown format. Do not deviate:
 
 ### Testing
 - test(scope): [Detailed explanation based on code diff]
+
+STOP THERE. DO NOT output any previous version history (e.g., do not output the old 1.0.0 block unless you are actively merging docs into it). 
+
+STRICT VERSION MATH:
+Look at the user's existing CHANGELOG.md to find the HIGHEST existing version. Use it as your baseline.
+- MAJOR BUMP (X.0.0): Triggered ONLY if there is a `feat` AND the exact word "MAJOR" appears in the commit message/PR. 
+- MINOR BUMP (0.X.0): Triggered if there is a `feat` (and no "MAJOR"). 
+- PATCH BUMP (0.0.X): Triggered if there is a `fix` (and no `feat`). 
+- NO BUMP (MERGE): If ONLY `docs` or `test` changes, DO NOT increment. Use the EXACT SAME version number as the highest existing release and merge your new bullets into it.
 
 ADDITIONAL CONSTRAINTS:
 1. Replace [VERSION] with your calculated SemVer number. 
