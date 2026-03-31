@@ -1,3 +1,9 @@
+## [2.1.1] - 2026-03-31
+Updated CI workflow documentation to reflect automated changelog generation.
+
+### Documentation
+- docs(README): Removed manual instructions for triggering the changelog update, reflecting the automated process.
+
 ## [2.1.0] - 2026-03-31
 Further enhanced the CI/CD pipeline with automated PR description, review, and code improvement capabilities, alongside comprehensive documentation updates.
 
