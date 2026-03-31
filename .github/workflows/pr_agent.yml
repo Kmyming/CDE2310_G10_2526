@@ -24,6 +24,30 @@ jobs:
             echo "✅ SUCCESS: GitHub Actions successfully loaded a secret string!"
           fi
 
+      # --- NEW STEP: THE COMMIT SCRAPER ---
+      - name: Auto-Inject Commits into PR Body
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          # 1. Fetch all commit messages in this PR and format them as bullet points
+          COMMITS=$(gh api repos/$REPO/pulls/$PR_NUMBER/commits --jq '.[].commit.message' | sed 's/^/- /')
+          
+          # 2. Fetch the current PR description
+          CURRENT_BODY=$(gh pr view $PR_NUMBER --json body --jq '.body')
+          
+          # 3. Strip out any old auto-generated logs to prevent duplicates if you push more code later
+          CLEAN_BODY=$(echo "$CURRENT_BODY" | awk '/### 🤖 Auto-Generated Commit Log/{exit} {print}')
+          
+          # 4. Combine the clean description with the fresh commit list
+          NEW_BODY=$(printf "%s\n\n### 🤖 Auto-Generated Commit Log\n%s" "$CLEAN_BODY" "$COMMITS")
+          
+          # 5. Update the PR description live on GitHub
+          gh pr edit $PR_NUMBER --body "$NEW_BODY"
+      # ------------------------------------
+
       - name: Run PR Agent
         uses: qodo-ai/pr-agent@main
         env:
