@@ -21,6 +21,7 @@ class FSMNode(Node):
         self.create_subscription(Bool, '/dock_done',    self.dock_done_callback,    10)
         self.create_subscription(Bool,        '/launch_done',  self.launch_done_callback,  10)
         self.create_subscription(Bool,        '/map_explored', self.map_explored_callback, 10)
+        self.create_subscription(Bool, '/marker_detected', self.aruco_callback, 10)
 
         # ── Timer ───────────────────────────────────────────────────────────
         self.timer = self.create_timer(0.1, self.state_machine_loop)
@@ -58,10 +59,10 @@ class FSMNode(Node):
 
     # ── ArUco callback ──────────────────────────────────────────────────────
 
-    def aruco_callback(self, msg):
-        if self.state == "EXPLORE":
-            self.get_logger().info("Marker detected")
-            self.marker_detected = True
+    def aruco_callback(self, msg: Bool):
+        if msg.data and self.state == "EXPLORE":
+           self.get_logger().info("Marker detected")
+           self.marker_detected = True
 
     # ── Dock callback ───────────────────────────────────────────────────────
 

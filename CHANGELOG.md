@@ -1,11 +1,12 @@
+## [1.2.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/18) - 2026-03-31
 
+Integrate marker detection into the FSM, adding a new subscriber and refining callback logic for robust state transitions.
 
-# Changelog
+### Added
+- feat(fsm): Added a new subscriber for the `/marker_detected` topic in `FSM/fsm_code.py`.
 
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+### Fixed
+- fix(fsm): Refined the `aruco_callback` logic in `FSM/fsm_code.py` to correctly check `msg.data` in addition to the FSM being in the "EXPLORE" state before setting `self.marker_detected`.
 
 ## [1.1.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/17) - 2026-03-26
 
@@ -56,4 +57,9 @@ Complete architectural refactor: Independent `auto_explore` mission control syst
 - **ROS2 Version:** Humble
 - **Python Version:** 3.x
 - **Key Dependencies:** rclpy, geometry_msgs, sensor_msgs, nav_msgs, std_msgs, cv_bridge, opencv-python, pyyaml, slam_toolbox, rviz2
+  
+---
+All notable changes to this project will be documented in this file.
 
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).

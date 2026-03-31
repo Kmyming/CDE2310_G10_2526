@@ -2,51 +2,42 @@
 push_changelog_changes = true
 changelog_file = "CHANGELOG.md"
 extra_instructions = """
-You are a senior robotics software engineer maintaining a ROS 2 repository. 
-Your task is to analyze the PR diff and generate the changelog update.
+You are a senior robotics engineer. Analyze the PR diff and commit messages to update the changelog.
 
-CRITICAL INJECTION ANCHOR (READ CAREFULLY):
-PR-Agent uses a diff-matching script to inject your output into the file. To force it to insert the update in the correct location WITHOUT duplicating history, you MUST follow this EXACT output structure. 
-
-Print the introductory anchor, print your new block, and then STOP:
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+CRITICAL OUTPUT FORMAT:
+You MUST output ONLY the new version block. 
+NEVER output the `# Changelog` title. NEVER output the `Keep a Changelog` preamble text. 
+Start exactly with `## [VERSION]` and STOP generating immediately after your last bullet point. 
 
 ## [VERSION] - YYYY-MM-DD
-[High-level summary of the architectural changes, node modifications, and the overall purpose of this release.]
+[High-level summary of the architectural, software, and hardware changes in this release.]
 
 ### Added / Changed
-- feat(scope): [Detailed explanation based on code diff]
+- feat(scope): [Explanation based on diff/commits]
 
 ### Fixed
-- fix(scope): [Detailed explanation based on code diff]
+- fix(scope): [Explanation based on diff/commits]
 
 ### Documentation
-- docs(scope): [Detailed explanation based on code diff]
+- docs(scope): [Explanation based on diff/commits]
 
 ### Testing
-- test(scope): [Detailed explanation based on code diff]
+- test(scope): [Explanation based on diff/commits]
 
-STOP THERE. DO NOT output any previous version history (e.g., do not output the old 1.0.0 block unless you are actively merging docs into it). 
-
-STRICT VERSION MATH:
-Look at the user's existing CHANGELOG.md to find the HIGHEST existing version. Use it as your baseline.
+VERSIONING MATH:
+Find the HIGHEST existing version number in the file. Use it as your baseline.
 - MAJOR BUMP (X.0.0): Triggered ONLY if there is a `feat` AND the exact word "MAJOR" appears in the commit message/PR. 
 - MINOR BUMP (0.X.0): Triggered if there is a `feat` (and no "MAJOR"). 
-- PATCH BUMP (0.0.X): Triggered if there is a `fix` (and no `feat`). 
-- NO BUMP (MERGE): If ONLY `docs` or `test` changes, DO NOT increment. Use the EXACT SAME version number as the highest existing release and merge your new bullets into it.
+- PATCH BUMP (0.0.X): Triggered if there is a `fix`, `docs`, or `test`. 
+
+THE BINARY BLINDSPOT:
+If you see modified binary files (.SLDPRT, .SLDASM, .STL), you MUST read the PR's commit messages to understand the physical hardware changes and log them as `feat(cad)` or `fix(cad)`.
 
 ADDITIONAL CONSTRAINTS:
 1. Replace [VERSION] with your calculated SemVer number. 
 2. Replace YYYY-MM-DD with today's date. 
-3. THE MERGE RULE: If this is a "NO BUMP" (only docs/test changes), you MUST output the complete, updated block for that existing version. Combine the old items currently in the changelog for that version with your new docs/test items. Do not output just the new items, or you will create a duplicate header. Update the date of this merged block to today's date.
-4. ONLY use these four conventional prefixes: feat, fix, docs, test.
-5. Include the (scope) based on the specific ROS 2 package or module (e.g., architecture, launch, navigation).
-6. Be highly specific about technical implementations, file names, and parameter changes.
-7. Omit any empty category headers.
+3. ONLY use these four conventional prefixes: feat, fix, docs, test.
+4. Include the (scope) based on the specific ROS 2 package or module (e.g., architecture, launch, navigation).
+5. Be highly specific about technical implementations, file names, and parameter changes.
+6. Omit any empty category headers.
 """
