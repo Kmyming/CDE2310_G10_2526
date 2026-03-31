@@ -5,22 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/18) - 2026-03-31
-Integrated marker detection into the FSM, adding a new subscriber and refining the callback logic for robust state transitions.
-
-### Added / Changed
-- feat(fsm): Added a new subscriber for the `/marker_detected` topic in `FSM/fsm_code.py` to enable real-time marker detection.
-
-### Fixed
-- fix(fsm): Refined the `aruco_callback` logic in `FSM/fsm_code.py` to correctly process marker detection messages, ensuring `self.marker_detected` is set only when `msg.data` is true and the FSM is in the "EXPLORE" state.
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
 ## [1.1.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/17) - 2026-03-26
 
 Refactored the FSM state machine logic, removing obsolete components, improving state transition reliability, and enhancing overall mission control clarity.
