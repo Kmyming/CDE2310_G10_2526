@@ -65,8 +65,8 @@ jobs:
         uses: docker://codiumai/pr-agent:latest
         env:
           github.user_token: ${{ secrets.GITHUB_TOKEN }}
-          OPENAI_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # The key that actually unlocks Gemini 2.5
+          OPENAI_KEY: ${{ secrets.GEMINI_API_KEY }} # Dummy key to satisfy PR-Agent's core checks
           config.model: "gemini/gemini-2.5-flash"
         with:
           entrypoint: python
