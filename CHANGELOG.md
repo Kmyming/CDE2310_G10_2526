@@ -1,3 +1,14 @@
+## [2.0.0] - 2026-03-31
+Major redesign of the launcher payload system, alongside significant enhancements to the CI/CD pipeline for automated changelog generation and PR agent functionality.
+
+### Added / Changed
+- feat(payload): Redesigned the launcher payload system, marking a major architectural change.
+- feat(cad): Introduced an ultimate pipeline test for CAD assets.
+- feat(ci): Implemented native Python CLI execution for PR Agent changelog updates within the CI workflow, including explicit model configuration (`gemini/gemini-2.5-flash`) and refined commit fetching logic.
+
+### Documentation
+- docs(README): Updated CI documentation and PR agent prompt details in the README.
+
 ## [1.2.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/18) - 2026-03-31
 
 Integrate marker detection into the FSM, adding a new subscriber and refining callback logic for robust state transitions.
