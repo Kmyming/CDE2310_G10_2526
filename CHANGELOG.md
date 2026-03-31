@@ -1,15 +1,3 @@
-## [2.0.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/23) - 2026-03-31
-
-Major redesign of the launcher system, alongside enhancements to the CI agent's PR body update mechanism and CAD pipeline testing.
-
-### Added / Changed
-- feat(payload): Implemented a major redesign of the launcher system.
-- feat(cad): Added ultimate pipeline testing for CAD components.
-- feat(ci): Enhanced the PR agent workflow (`.github/workflows/pr_agent.yml`) to reliably update PR bodies with auto-generated commit logs by restoring the checkout step, fetching the base ref, and using `git log` for commit retrieval.
-
-### Documentation
-- docs(README): Updated CI documentation and agent prompt information in `README.md`.
-
 ## [1.2.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/18) - 2026-03-31
 
 Integrate marker detection into the FSM, adding a new subscriber and refining callback logic for robust state transitions.
