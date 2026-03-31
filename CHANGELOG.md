@@ -1,3 +1,5 @@
+
+
 ## [1.2.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/18) - 2026-03-31
 
 Integrate marker detection into the FSM, adding a new subscriber and refining callback logic for robust state transitions.
