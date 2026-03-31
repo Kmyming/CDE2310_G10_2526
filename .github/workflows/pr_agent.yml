@@ -81,7 +81,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} 
         run: |
-          python -m pr_agent.cli --pr_url=${{ github.event.pull_request.html_url }} update_changelog --config.model="gemini/gemini-2.5-flash" --config.fallback_models="['gemini/gemini-2.5-flash']
+          python -m pr_agent.cli --pr_url=${{ github.event.pull_request.html_url }} update_changelog --config.model="gemini/gemini-2.5-flash" --config.fallback_models="['gemini/gemini-2.5-flash']"
 
 # --- 3. MANUAL COMMENT LISTENER (Allows /update_changelog in chat) ---
       - name: Run PR Agent
