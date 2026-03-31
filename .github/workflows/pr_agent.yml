@@ -64,8 +64,10 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: docker://codiumai/pr-agent:latest
         env:
-          github.user_token: ${{ secrets.GITHUB_TOKEN }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # The key that actually unlocks Gemini 2.5
+          GITHUB__USER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOOGLE_AI_STUDIO__GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # github.user_token: ${{ secrets.GITHUB_TOKEN }}
+          # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # The key that actually unlocks Gemini 2.5
           OPENAI_KEY: ${{ secrets.GEMINI_API_KEY }} # Dummy key to satisfy PR-Agent's core checks
           config.model: "gemini/gemini-2.5-flash"
         with:
