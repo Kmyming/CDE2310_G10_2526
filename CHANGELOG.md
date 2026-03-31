@@ -1,3 +1,15 @@
+## [2.0.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/20) - 2026-03-31
+
+Major redesign of the launcher system, introducing "launcher v2", and updates to CI documentation.
+
+### Added / Changed
+- feat(payload): Implemented a major redesign of the launcher system, referred to as "launcher v2".
+
+### Documentation
+- docs(README): Updated CI documentation and refined the CI agent prompt.
+
+
+
 ## [1.2.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/18) - 2026-03-31
 
 Integrate marker detection into the FSM, adding a new subscriber and refining callback logic for robust state transitions.
