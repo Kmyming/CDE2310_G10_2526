@@ -1,9 +1,3 @@
-[github_action_config]
-# This block tells Qodo to run automatically on PR open
-auto_review = false
-auto_describe = false
-auto_improve = false
-pr_actions = ["update_changelog"]
 
 [pr_update_changelog]
 push_changelog_changes = true
