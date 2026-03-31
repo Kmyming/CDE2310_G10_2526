@@ -58,8 +58,21 @@ jobs:
           
           # Push the text file to update the PR
           gh pr edit $PR_NUMBER --body-file pr_body.txt
-      # ------------------------------------
 
+      # --- 2. AUTOMATIC CHANGELOG (Bypasses hardcoded limitations) ---
+      - name: Auto-Run Changelog CLI
+        if: github.event_name == 'pull_request'
+        uses: docker://codiumai/pr-agent:latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          config.model: "gemini/gemini-2.5-flash"
+        with:
+          entrypoint: python
+          args: -m pr_agent.cli --pr_url=${{ github.event.pull_request.html_url }} update_changelog
+
+      # --- 3. MANUAL COMMENT LISTENER (Allows /update_changelog in chat) ---
       - name: Run PR Agent
         uses: qodo-ai/pr-agent@main
         env:
