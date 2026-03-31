@@ -1,3 +1,12 @@
+## [2.1.0] - 2026-03-31
+Further enhanced the CI/CD pipeline with automated PR description, review, and code improvement capabilities, alongside comprehensive documentation updates.
+
+### Added / Changed
+- feat(ci): Integrated automated PR description, review, and code improvement functionalities into the CI pipeline using the native Python PR-Agent CLI.
+
+### Documentation
+- docs(README): Expanded the CI/CD documentation in the README, detailing the AI pipeline steps, manual PR-Agent commands, and including a Mermaid architecture diagram.
+
 ## [2.0.0] - 2026-03-31
 Major redesign of the launcher payload system, alongside significant enhancements to the CI/CD pipeline for automated changelog generation and PR agent functionality.
 
