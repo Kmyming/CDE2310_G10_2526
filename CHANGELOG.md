@@ -1,3 +1,13 @@
+## [1.2.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/18) - 2026-03-31
+
+Integrate marker detection into the FSM, adding a new subscriber and refining callback logic for robust state transitions.
+
+### Added
+- feat(fsm): Added a new subscriber for the `/marker_detected` topic in `FSM/fsm_code.py`.
+
+### Fixed
+- fix(fsm): Refined the `aruco_callback` logic in `FSM/fsm_code.py` to correctly check `msg.data` in addition to the FSM being in the "EXPLORE" state before setting `self.marker_detected`.
+
 ## [1.1.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/17) - 2026-03-26
 
 Refactored the FSM state machine logic, removing obsolete components, improving state transition reliability, and enhancing overall mission control clarity.
