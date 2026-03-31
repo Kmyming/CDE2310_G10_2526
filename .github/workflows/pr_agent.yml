@@ -15,6 +15,13 @@ jobs:
       pull-requests: write
       contents: write
     steps:
+    # --- MISSING STEP RESTORED ---
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
+      # -----------------------------
+
       - name: Verify Secret Exists
         run: |
           if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then
@@ -30,19 +37,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          # Fetch commits and current body
-          COMMITS=$(gh pr view $PR_NUMBER --json commits --jq '.commits[].messageHeadline' | sed 's/^/- /')
+          # Force Git to download the base branch so we can compare against it
+          git fetch origin $BASE_REF
+          
+          # Fetch commits instantly from the local git tree
+          COMMITS=$(git log origin/$BASE_REF..HEAD --pretty=format:"- %s")
+          
+          # Fetch current PR body
           CURRENT_BODY=$(gh pr view $PR_NUMBER --json body --jq '.body')
           if [ -z "$CURRENT_BODY" ]; then CURRENT_BODY=" "; fi
           
-          # Clean old logs and write to text file
+          # Clean old logs and safely write to text file
           CLEAN_BODY=$(echo "$CURRENT_BODY" | awk '/### 🤖 Auto-Generated Commit Log/{exit} {print}')
           echo "$CLEAN_BODY" > pr_body.txt
           echo "" >> pr_body.txt
           echo "### 🤖 Auto-Generated Commit Log" >> pr_body.txt
-          echo "$COMMITS" >> pr_body.tx
+          echo "$COMMITS" >> pr_body.txt
+          
+          # Push the text file to update the PR
+          gh pr edit $PR_NUMBER --body-file pr_body.txt
       # ------------------------------------
 
       - name: Run PR Agent
@@ -57,3 +72,7 @@ jobs:
           config.model: "gemini/gemini-2.5-flash"
           config.fallback_models: '["gemini/gemini-2.5-flash"]'
           config.log_level: "DEBUG"
+          github_action_config.auto_review: "false"
+          github_action_config.auto_describe: "false"
+          github_action_config.auto_improve: "false"
+          github_action_config.pr_actions: "['update_changelog']"
