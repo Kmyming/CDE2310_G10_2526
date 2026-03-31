@@ -73,17 +73,16 @@ jobs:
       - name: Run Changelog Script
         if: github.event_name == 'pull_request'
         env:
-          github.user_token: ${{ secrets.GITHUB_TOKEN }}
-          # Native LiteLLM routing requires exactly this:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} 
-          GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} 
           # OPENAI_KEY: ${{ secrets.GEMINI_API_KEY }} # Dummy fallback
           # config.model: "gemini/gemini-2.5-flash"
-          PR_AGENT_CONFIG__MODEL: "gemini/gemini-2.5-flash"
-          PR_AGENT_CONFIG__FALLBACK_MODELS: '["gemini/gemini-2.5-flash"]'
+          # PR_AGENT_CONFIG__MODEL: "gemini/gemini-2.5-flash"
+          # PR_AGENT_CONFIG__FALLBACK_MODELS: '["gemini/gemini-2.5-flash"]'
+          github.user_token: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} 
         run: |
-          python -m pr_agent.cli --pr_url=${{ github.event.pull_request.html_url }} update_changelog 
-          
+          python -m pr_agent.cli --pr_url=${{ github.event.pull_request.html_url }} update_changelog --config.model="gemini/gemini-2.5-flash" --config.fallback_models="['gemini/gemini-2.5-flash']
+
 # --- 3. MANUAL COMMENT LISTENER (Allows /update_changelog in chat) ---
       - name: Run PR Agent
         uses: qodo-ai/pr-agent@main
