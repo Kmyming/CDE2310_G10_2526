@@ -83,6 +83,14 @@ jobs:
         run: |
           python -m pr_agent.cli --pr_url=${{ github.event.pull_request.html_url }} update_changelog --config.model="gemini/gemini-2.5-flash" --config.fallback_models="['gemini/gemini-2.5-flash']" --config.custom_model_max_tokens=1000000
 
+          # 2. Describe PR (Auto-updates the title and body based on the diff)
+          python -m pr_agent.cli --pr_url=${{ github.event.pull_request.html_url }} describe --config.model="gemini/gemini-2.5-flash" --config.fallback_models="['gemini/gemini-2.5-flash']" --config.custom_model_max_tokens=1000000
+          
+          # 3. Review PR (Provides a high-level summary and catches bugs)
+          python -m pr_agent.cli --pr_url=${{ github.event.pull_request.html_url }} review --config.model="gemini/gemini-2.5-flash" --config.fallback_models="['gemini/gemini-2.5-flash']" --config.custom_model_max_tokens=1000000
+          
+          # 4. Improve Code (Leaves inline comments with actionable code suggestions)
+          python -m pr_agent.cli --pr_url=${{ github.event.pull_request.html_url }} improve --config.model="gemini/gemini-2.5-flash" --config.fallback_models="['gemini/gemini-2.5-flash']" --config.custom_model_max_tokens=1000000
 # --- 3. MANUAL COMMENT LISTENER (Allows /update_changelog in chat) ---
       - name: Run PR Agent
         uses: qodo-ai/pr-agent@main
