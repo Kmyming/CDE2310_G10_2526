@@ -5,9 +5,21 @@ Major redesign of the launcher payload system, alongside significant enhancement
 - feat(payload): Redesigned the launcher payload system, marking a major architectural change.
 - feat(cad): Introduced an ultimate pipeline test for CAD assets.
 - feat(ci): Implemented native Python CLI execution for PR Agent changelog updates within the CI workflow, including explicit model configuration (`gemini/gemini-2.5-flash`) and refined commit fetching logic.
+- feat(ci): implemented an automated commit scraper to read local git history (`git log`) and inject commit messages directly into PR descriptions. This successfully bridges the "binary blindspot," allowing the AI to read physical hardware/CAD updates (`.SLDPRT`, `.STL`) even when the `git diff` is empty.
+- feat(ci): added a native Python execution step (`pip install pr-agent`) to trigger the `update_changelog` tool automatically on PR creation, completely bypassing hardcoded event-trigger limitations in the official Qodo Docker image.
+- feat(ci): configured PR-Agent to utilize Google's `gemini-2.5-flash` model natively.
+- feat(ci): implemented a massive 1,000,000 custom token limit override (`--config.custom_model_max_tokens=1000000`) to prevent the agent from panicking when reading massive hardware repository diffs.
 
 ### Documentation
 - docs(README): Updated CI documentation and PR agent prompt details in the README.
+
+### Changed
+- refactor(ci): transitioned from the official `qodo-ai/pr-agent` Action and Docker image wrappers to a raw CLI execution environment. This prevents environment variable corruption and syntax stripping by the Ubuntu bash runner.
+- refactor(ci): shifted model configuration definitions from Bash environment variables to direct CLI arguments (`--config.model="..."`) to bypass the buggy Dynaconf settings parser.
+
+### Fixed
+- fix(ci): pinned the `httpx` library to `<0.28.0` in the GitHub Actions runner to prevent fatal `AsyncClient.__init__()` proxy crashes inside the LiteLLM router when falling back to default models.
+- fix(ci): resolved `400 Invalid API Key` and LiteLLM authentication errors by routing the GitHub secret explicitly to the `GEMINI_API_KEY` variable required by the native Python environment.
 
 ## [1.2.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/18) - 2026-03-31
 
