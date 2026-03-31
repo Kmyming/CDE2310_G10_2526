@@ -1,3 +1,11 @@
+## [1.1.1](https://github.com/Kmyming/CDE2310_G10_2526/pull/18) - 2026-03-31
+Integrated marker detection into the FSM, adding a new subscriber and refining the callback logic for more robust state transitions.
+
+### Fixed
+- fix(fsm): Added a subscriber for the `/marker_detected` topic in `FSM/fsm_code.py`.
+- fix(fsm): Refined the `aruco_callback` logic in `FSM/fsm_code.py` to check `msg.data` and the `EXPLORE` state before setting `self.marker_detected`.
+- fix(fsm): Added `Bool` type hint to the `msg` parameter of `aruco_callback` in `FSM/fsm_code.py`.
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
