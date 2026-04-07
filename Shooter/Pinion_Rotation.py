@@ -20,12 +20,12 @@ import time
 # USER PARAMETERS — edit these for your application
 # ---------------------------------------------------------
 HOLD_DURATION   = 5.0     # seconds: how long to hold after 170° rotation
-CYCLE_PAUSE     = 2.0     # seconds: pause between cycles (0 = no pause)
-NUM_CYCLES      = 3       # how many cycles to run (0 = infinite)
-# ---------------------------------------------------------
+CYCLE_PAUSE = 5.0
+# NUM_CYCLES      = 3       # how many cycles to run (0 = infinite)
+# # ---------------------------------------------------------
 
 # --- Servo Configuration ---
-SERVO_PIN    = 13         # GPIO13 (Physical Pin 33)
+SERVO_PIN    = 17        # GPIO17 (Physical Pin 33)
 PWM_FREQ     = 50         # 50Hz standard for servos
 
 # --- Duty Cycle values ---
@@ -88,8 +88,8 @@ def cleanup():
 
 # --- Single Cycle ---
 
-def run_cycle(cycle_num):
-    print(f"\n========== CYCLE {cycle_num} ==========")
+def run_cycle():
+
 
     # --- Phase 1: Rotate 170° clockwise (teeth engage rack) ---
     print(f"[Phase 1] Rotating 170° CW — teeth engaging rack")
@@ -104,7 +104,7 @@ def run_cycle(cycle_num):
     rotate_degrees(PHASE3_DEGREES, label="disengaging rack")
 
     # --- Phase 4: Pause before next cycle ---
-    print(f"[Phase 4] Cycle {cycle_num} complete. Waiting {CYCLE_PAUSE}s")
+   
     time.sleep(CYCLE_PAUSE)
 
 # --- Main ---
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     #             cycle += 1
     #     else:
     #         for cycle in range(1, NUM_CYCLES + 1):
-    run_cycle(cycle)
+    run_cycle()
 
     #     print("\nAll cycles complete.")
     #     stop_motor()
