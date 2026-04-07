@@ -319,30 +319,60 @@ def exploration(data,width,height,resolution,column,row,originX,originY):
         return
 
 def localControl(scan):
-    v = None
-    w = None
-
     if scan is None or len(scan) == 0:
-        return v, w
+        return None, None
 
     s = np.array(scan, dtype=float)
     s = np.nan_to_num(s, nan=10.0, posinf=10.0, neginf=0.0)
     n = len(s)
 
-    # front-left: first 1/6 of scan
-    left_end = max(1, n // 6)
-    for i in range(0, left_end):
-        if s[i] < robot_r:
-            return 0.2, -math.pi / 4
+    # --- Define scan sectors ---
+    # LDS-02: index 0 = front, increases counterclockwise
+    front_range      = max(1, n // 12)   # ±15 degrees
+    front_left_end   = max(1, n // 6)    # 0–60 degrees
+    front_right_start = max(0, n - n//6) # 300–360 degrees
 
-    # front-right: last 1/6 of scan
-    right_start = max(0, n - n // 6)
-    for i in range(right_start, n):
-        if s[i] < robot_r:
-            return 0.2, math.pi / 4
+    front_center  = s[:front_range].tolist() + s[n-front_range:].tolist()
+    front_left    = s[:front_left_end].tolist()
+    front_right   = s[front_right_start:].tolist()
 
-    return v, w
+    min_front  = min(front_center)
+    min_left   = min(front_left)
+    min_right  = min(front_right)
 
+    # --- Distance thresholds ---
+    stop_dist  = robot_r * 0.6   # emergency stop zone
+    slow_dist  = robot_r * 1.2   # slow down zone
+    avoid_dist = robot_r         # turn zone
+
+    # --- Emergency stop: obstacle directly ahead ---
+    if min_front < stop_dist:
+        return 0.0, 0.0
+
+    # --- Obstacle ahead: turn away ---
+    if min_front < avoid_dist:
+        # Turn toward the side with more space
+        if min_left > min_right:
+            return 0.05, math.pi / 4    # turn left
+        else:
+            return 0.05, -math.pi / 4   # turn right
+
+    # --- Obstacle on front-left: veer right ---
+    if min_left < avoid_dist:
+        intensity = 1.0 - (min_left / avoid_dist)  # stronger turn when closer
+        return 0.08, -(math.pi / 6 + intensity * math.pi / 6)
+
+    # --- Obstacle on front-right: veer left ---
+    if min_right < avoid_dist:
+        intensity = 1.0 - (min_right / avoid_dist)
+        return 0.08, (math.pi / 6 + intensity * math.pi / 6)
+
+    # --- Approaching obstacle: slow down ---
+    if min_front < slow_dist:
+        slow_speed = speed * (min_front / slow_dist)
+        return max(slow_speed, 0.05), 0.0
+
+    return None, None  # no obstacle, hand back to pure pursuit
 
 class navigationControl(Node):
     def __init__(self):
@@ -356,6 +386,9 @@ class navigationControl(Node):
             qos_profile_sensor_data
         )
         self.publisher = self.create_publisher(Twist, 'cmd_vel', 10)
+        # Publisher for /map_explored to notify FSM when exploration is done
+        from std_msgs.msg import Bool
+        self.map_explored_pub = self.create_publisher(Bool, '/map_explored', 10)
         print("[INFO] DISCOVERY MODE ACTIVE")
         self.exploration_mode = True
         threading.Thread(target=self.exp).start() # Runs the exploration function as a thread.
@@ -376,6 +409,10 @@ class navigationControl(Node):
                     self.path = pathGlobal
                 if isinstance(self.path, int) and self.path == -1:
                     print("[INFO] DISCOVERY FINISHED")
+                    # Notify FSM that map is explored
+                    from std_msgs.msg import Bool
+                    self.map_explored_pub.publish(Bool(data=True))
+                    # Optionally, you can still exit if you want to stop this node:
                     sys.exit()
                 self.c = int((self.path[-1][0] - self.originX)/self.resolution) 
                 self.r = int((self.path[-1][1] - self.originY)/self.resolution) 
@@ -389,18 +426,25 @@ class navigationControl(Node):
             
             # Route Following Block Start
             else:
-                v , w = localControl(self.scan)
-                if v == None:
-                    v, w, self.i = pure_pursuit(self.x, self.y, self.yaw, self.path, self.i)
+                v, w = localControl(self.scan)
+                avoiding = v is not None
 
-                if(abs(self.x - self.path[-1][0]) < target_error and abs(self.y - self.path[-1][1]) < target_error):
-                    v = 0.0
-                    w = 0.0
-                    self.exploration_mode = True
-                    print("[INFO] TARGET ACHIEVED")
-                    self.t.join() # Wait until thread finishes.
-                twist.linear.x = v
-                twist.angular.z = w
+                if avoiding:
+                    # During avoidance, don't check target arrival
+                    twist.linear.x = v
+                    twist.angular.z = w
+                else:
+                    v, w, self.i = pure_pursuit(self.x, self.y, self.yaw, self.path, self.i)
+                    if (abs(self.x - self.path[-1][0]) < target_error and 
+                        abs(self.y - self.path[-1][1]) < target_error):
+                        v = 0.0
+                        w = 0.0
+                        self.exploration_mode = True
+                        print("[INFO] TARGET ACHIEVED")
+                        self.t.join() # Wait until thread finishes.
+                    twist.linear.x = v
+                    twist.angular.z = w
+
                 self.publisher.publish(twist)
                 time.sleep(0.1)
             # Route Following Block End
