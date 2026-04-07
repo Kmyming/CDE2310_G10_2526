@@ -318,8 +318,14 @@ def exploration(data,width,height,resolution,column,row,originX,originY):
         pathGlobal = path
         return
 
-def publish_path(node, path):
-    """Publish the path to RViz2 for visualization."""
+def publish_path(node, path, start_index=0):
+    """Publish the path to RViz2 for visualization.
+    
+    Args:
+        node: ROS2 node instance
+        path: List of (x, y) waypoints
+        start_index: Index to start publishing from (for showing remaining path)
+    """
     if path is None or isinstance(path, int):
         return
     
@@ -327,7 +333,9 @@ def publish_path(node, path):
     path_msg.header.frame_id = 'map'
     path_msg.header.stamp = node.get_clock().now().to_msg()
     
-    for point in path:
+    # Publish from start_index onwards to show remaining path
+    for i in range(start_index, len(path)):
+        point = path[i]
         pose = PoseStamped()
         pose.header.frame_id = 'map'
         pose.header.stamp = node.get_clock().now().to_msg()
@@ -469,6 +477,8 @@ class navigationControl(Node):
                     twist.linear.x = v
                     twist.angular.z = w
 
+                # Publish remaining path dynamically
+                publish_path(self, self.path, self.i)
                 self.publisher.publish(twist)
                 time.sleep(0.1)
             # Route Following Block End
