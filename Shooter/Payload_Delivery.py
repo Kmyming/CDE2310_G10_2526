@@ -33,10 +33,11 @@ class ArucoTFListener(Node):
         GPIO.setmode(GPIO.BCM)
         self.gate = 17
         self.rack = 27
-        GPIO.setup(self.gate, GPIO.OUT)
-        GPIO.setup(self.rack, GPIO.OUT)
+        GPIO.setup(self.rack, GPIO.OUT, initial=GPIO.LOW)
         self.gate_delay = 0.5
         self.rack_delay = 0.3
+        self.p = GPIO.PWM(self.gate, 50)
+        self.p.start(2.5) #start at 0 degrees
 
         self.dynamic_counter = 0 #Counter for dynamic delivery, to ensure we shoot only 3 times when the marker is in the correct position
 
@@ -154,12 +155,29 @@ class ArucoTFListener(Node):
 
 
     def shoot(self):
-        GPIO.output(self.gate, GPIO.HIGH)  # Open Gate
+        self.set_servo_angle(90)  # Open Gate
         time.sleep(self.gate_delay)
-        GPIO.output(self.gate, GPIO.LOW)   # Close Gate
+        self.set_servo_angle(0)   # Close Gate
         GPIO.output(self.rack, GPIO.HIGH)  # Push Rack
         time.sleep(self.rack_delay)
         GPIO.output(self.rack, GPIO.LOW)   # Pull Rack
+
+    def set_servo_angle(self, angle):
+        """
+        Calculates duty cycle for specific angle and stops PWM to prevent jitter.
+        Logic based on CDE2310 course provided material.
+        """
+        if angle < 0: angle = 0
+        elif angle > 180: angle = 180
+
+        duty_cycle = (angle / 18.0) + 2.5
+        self.p.ChangeDutyCycle(duty_cycle)
+        
+        # Allow time for mechanical arm to move
+        time.sleep(0.5)
+        
+        # SET TO 2.5 TO STOP JITTER: This kills the signal so the servo stays still
+        self.p.ChangeDutyCycle(2.5)
 
 def main():
     rclpy.init()

@@ -1,3 +1,14 @@
+## [2.2.0] - 2026-04-07
+Implemented autonomous docking capabilities using ArUco markers and enhanced payload delivery servo control.
+
+### Added / Changed
+- feat(docking): Introduced a new `MoveOnAruco` node for autonomous docking, utilizing ArUco marker pose data, odometry, and LIDAR for alignment and obstacle avoidance.
+- feat(shooting): Added a `set_servo_angle` method for precise servo control in the payload delivery system.
+
+### Fixed
+- fix(servo): Corrected the gate opening and closing mechanism in the payload delivery system to use PWM for smoother servo operation.
+- fix(aruco): Updated the ArUco pose publisher to correctly detect and process 4x4 ArUco markers.
+
 ## [2.1.1] - 2026-03-31
 Updated CI workflow documentation to reflect automated changelog generation.
 
