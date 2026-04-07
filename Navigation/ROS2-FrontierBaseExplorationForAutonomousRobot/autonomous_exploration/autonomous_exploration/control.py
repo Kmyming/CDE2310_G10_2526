@@ -1,8 +1,8 @@
 import rclpy
 from rclpy.node import Node
-from nav_msgs.msg import OccupancyGrid , Odometry
+from nav_msgs.msg import OccupancyGrid , Odometry, Path
 from rclpy.qos import qos_profile_sensor_data
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, PoseStamped
 from sensor_msgs.msg import LaserScan
 import numpy as np
 import heapq , math , random , yaml
@@ -318,6 +318,26 @@ def exploration(data,width,height,resolution,column,row,originX,originY):
         pathGlobal = path
         return
 
+def publish_path(node, path):
+    """Publish the path to RViz2 for visualization."""
+    if path is None or isinstance(path, int):
+        return
+    
+    path_msg = Path()
+    path_msg.header.frame_id = 'map'
+    path_msg.header.stamp = node.get_clock().now().to_msg()
+    
+    for point in path:
+        pose = PoseStamped()
+        pose.header.frame_id = 'map'
+        pose.header.stamp = node.get_clock().now().to_msg()
+        pose.pose.position.x = point[0]
+        pose.pose.position.y = point[1]
+        pose.pose.position.z = 0.0
+        path_msg.poses.append(pose)
+    
+    node.path_pub.publish(path_msg)
+
 def localControl(scan):
     if scan is None or len(scan) == 0:
         return None, None
@@ -389,6 +409,8 @@ class navigationControl(Node):
         # Publisher for /map_explored to notify FSM when exploration is done
         from std_msgs.msg import Bool
         self.map_explored_pub = self.create_publisher(Bool, '/map_explored', 10)
+        # Publisher for exploration path visualization in RViz2
+        self.path_pub = self.create_publisher(Path, '/exploration_path', 10)
         print("[INFO] DISCOVERY MODE ACTIVE")
         self.exploration_mode = True
         threading.Thread(target=self.exp).start() # Runs the exploration function as a thread.
@@ -419,6 +441,8 @@ class navigationControl(Node):
                 self.exploration_mode = False
                 self.i = 0
                 print("[INFO] NEW TARGET SELECTED")
+                # Publish path to RViz2 for visualization
+                publish_path(self, self.path)
                 t = pathLength(self.path)/speed
                 t = t - 0.2 # 0.2 seconds are subtracted from the time calculated according to x = v * t formula. Exploration function is called after t time.
                 self.t = threading.Timer(t,self.target_callback) # Runs the exploration function shortly before reaching the target.
