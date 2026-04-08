@@ -1,96 +1,104 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String, Bool
+from geometry_msgs.msg import Twist
 
 
 class FSMNode(Node):
     def __init__(self):
         super().__init__('fsm_controller')
 
-        # ── Internal Variables ──────────────────────────────────────────────
+        # State variables
         self.state = "IDLE"
         self.marker_detected = False
         self.marker_count = 0
         self.required_markers = 3
         self.map_explored = False
 
-        # ── Publishers ──────────────────────────────────────────────────────
-        self.state_pub = self.create_publisher(String, '/states', 10)
+        # Store incoming velocities
+        self.latest_nav = Twist()
+        self.latest_dock = Twist()
 
-        # ── Subscribers ─────────────────────────────────────────────────────
-        self.create_subscription(Bool, '/dock_done',    self.dock_done_callback,    10)
-        self.create_subscription(Bool,        '/launch_done',  self.launch_done_callback,  10)
-        self.create_subscription(Bool,        '/map_explored', self.map_explored_callback, 10)
+        # Publishers
+        self.state_pub = self.create_publisher(String, '/states', 10)
+        self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.zone_pub = self.create_publisher(String, '/zone', 10)
+
+        # Subscribers (FSM triggers)
+        self.create_subscription(Bool, '/dock_done', self.dock_done_callback, 10)
+        self.create_subscription(Bool, '/launch_done', self.launch_done_callback, 10)
+        self.create_subscription(Bool, '/map_explored', self.map_explored_callback, 10)
         self.create_subscription(Bool, '/marker_detected', self.aruco_callback, 10)
 
-        # ── Timer ───────────────────────────────────────────────────────────
+        # Subscribers (velocity inputs)
+        self.create_subscription(Twist, '/cmd_vel_nav', self.nav_cb, 10)
+        self.create_subscription(Twist, '/cmd_vel_docking', self.dock_cb, 10)
+
+        # Main loop
         self.timer = self.create_timer(0.1, self.state_machine_loop)
-        self.get_logger().info("FSM Controller Started")
         self.change_state("EXPLORE")
 
-    # ── State management ────────────────────────────────────────────────────
+    # Velocity callbacks
+    def nav_cb(self, msg):
+        self.latest_nav = msg
 
+    def dock_cb(self, msg):
+        self.latest_dock = msg
+
+    # State transition handler
     def change_state(self, new_state):
         if self.state == new_state:
             return
+
         self.state = new_state
+
         msg = String()
         msg.data = new_state
         self.state_pub.publish(msg)
-        self.get_logger().info(f"Transitioned to {new_state} state")
 
-    # ── Main loop ───────────────────────────────────────────────────────────
+        if new_state in ["DOCK", "LAUNCH"]:
+            zone_msg = String()
+            zone_msg.data = "static"
+            self.zone_pub.publish(zone_msg)
 
+    # FSM loop
     def state_machine_loop(self):
         if self.state == "EXPLORE":
             if self.marker_detected:
                 self.marker_detected = False
                 self.change_state("DOCK")
-
             elif self.map_explored and self.marker_count >= self.required_markers:
                 self.change_state("END")
 
         elif self.state == "END":
-            self.get_logger().info("Mission Complete! Goodbye!")
-            self.timer.cancel()   # stop the loop so this doesn't spam the log
+            self.timer.cancel()
 
-        # DOCK and LAUNCH transitions are driven by callbacks below,
- 
+        self.publish_cmd()
 
-    # ── ArUco callback ──────────────────────────────────────────────────────
+    # Velocity multiplexer
+    def publish_cmd(self):
+        if self.state == "EXPLORE":
+            self.cmd_pub.publish(self.latest_nav)
+        elif self.state == "DOCK":
+            self.cmd_pub.publish(self.latest_dock)
+        else:
+            self.cmd_pub.publish(Twist())
 
+    # FSM trigger callbacks
     def aruco_callback(self, msg: Bool):
         if msg.data and self.state == "EXPLORE":
-           self.get_logger().info("Marker detected")
-           self.marker_detected = True
-
-    # ── Dock callback ───────────────────────────────────────────────────────
+            self.marker_detected = True
 
     def dock_done_callback(self, msg: Bool):
         if msg.data and self.state == "DOCK":
-            self.get_logger().info("Docking complete — launching")
             self.change_state("LAUNCH")
-
-    # ── Launch callback ──────────────────────────────────────────────────────
 
     def launch_done_callback(self, msg: Bool):
         if msg.data and self.state == "LAUNCH":
-            self.get_logger().info("Launch complete")
             self.marker_count += 1
-            self.get_logger().info(f"Markers serviced: {self.marker_count}/{self.required_markers}")
             self.change_state("EXPLORE")
 
-    # ── Map-explored callback ────────────────────────────────────────────────
-
     def map_explored_callback(self, msg: Bool):
-        # NOTE: control.py currently calls sys.exit() instead of publishing here.
-        #       Replace that sys.exit() call in control.py with:
-        #
-        #           self.map_explored_pub.publish(Bool(data=True))
-        #
-        #       and add a publisher:
-        #
-        #           self.map_explored_pub = self.create_publisher(Bool, '/map_explored', 10)
         self.map_explored = msg.data
 
 
