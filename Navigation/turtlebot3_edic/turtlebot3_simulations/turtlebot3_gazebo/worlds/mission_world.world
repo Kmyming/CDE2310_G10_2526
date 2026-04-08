@@ -361,6 +361,17 @@
       <pose>3 0 0.2 0 0 0</pose>
     </model>
 
+    <!-- ARUCO MARKERS -->
+    <include>
+      <uri>model://aruco_marker_0</uri>
+      <pose>-0.75 1.35 0.6 0 0 -1.5708</pose>
+    </include>
+
+    <include>
+      <uri>model://aruco_marker_1</uri>
+      <pose>1.25 -1.35 0.6 0 0 1.5708</pose>
+    </include>
+
     <!-- TurtleBot3 spawn -->
     <include>
       <uri>model://turtlebot3_burger</uri>
