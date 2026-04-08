@@ -1,3 +1,10 @@
+## [2.3.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/28) - 2026-04-08
+Implemented a command velocity multiplexer within the FSM to dynamically switch between navigation and docking commands, and introduced a "static" zone publisher for docking and launch states.
+
+### Added / Changed
+- feat(fsm): Added a command velocity multiplexer in `fsm_code.py` to publish `/cmd_vel` based on the current FSM state, switching between `/cmd_vel_nav` and `/cmd_vel_docking` inputs.
+- feat(fsm): Introduced a `/zone` publisher in `fsm_code.py` to indicate "static" zones during "DOCK" and "LAUNCH" states, supporting static/dynamic docking state management.
+
 ## [2.2.0] - 2026-04-07
 Implemented autonomous docking capabilities using ArUco markers and enhanced payload delivery servo control.
 
