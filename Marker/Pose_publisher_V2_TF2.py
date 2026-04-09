@@ -12,6 +12,7 @@ from sensor_msgs.msg import Image, CameraInfo
 from geometry_msgs.msg import TransformStamped
 from cv_bridge import CvBridge
 from tf2_ros import TransformBroadcaster
+from std_msgs.msg import Bool
 
 
 def rotation_matrix_to_quaternion(R: np.ndarray):
@@ -53,6 +54,8 @@ class ArucoTFBroadcaster(Node):
         self.image_topic = "/camera/image_raw"
         self.camera_info_topic = "/camera/camera_info"
         self.camera_frame = "camera_optical_frame"
+
+        self.marker_pub = self.create_publisher(Bool, '/marker_detected', 10)
 
         self.marker_size_m = 0.053
         self.aruco_dict_id = cv2.aruco.DICT_4X4_250
@@ -148,23 +151,26 @@ class ArucoTFBroadcaster(Node):
 
     def image_callback(self, msg: Image):
         camera_matrix, dist_coeffs, calib_source = self.get_calibration()
-
+    
         if camera_matrix is None or dist_coeffs is None:
             self.get_logger().warning("No calibration available, skipping frame")
+            self.marker_pub.publish(Bool(data=False))
             return
-
+    
         try:
             frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
         except Exception as e:
             self.get_logger().error(f"Failed to convert image: {e}")
+            self.marker_pub.publish(Bool(data=False))
             return
-
+    
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         corners, ids, _ = self.detect_markers(gray)
-
+    
         if ids is None or len(ids) == 0:
+            self.marker_pub.publish(Bool(data=False))
             return
-
+    
         try:
             rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
                 corners,
@@ -174,33 +180,37 @@ class ArucoTFBroadcaster(Node):
             )
         except Exception as e:
             self.get_logger().error(f"Pose estimation failed: {e}")
+            self.marker_pub.publish(Bool(data=False))
             return
-
+    
+        # At least one marker successfully detected
+        self.marker_pub.publish(Bool(data=True))
+    
         ids = ids.flatten()
-
+    
         for i, marker_id in enumerate(ids):
             rvec = rvecs[i][0]
             tvec = tvecs[i][0]
-
+    
             rot_mat, _ = cv2.Rodrigues(rvec)
             qx, qy, qz, qw = rotation_matrix_to_quaternion(rot_mat)
-
+    
             transform = TransformStamped()
             transform.header.stamp = self.get_clock().now().to_msg()
             transform.header.frame_id = self.camera_frame
             transform.child_frame_id = f"aruco_marker_{int(marker_id)}"
-
+    
             transform.transform.translation.x = float(tvec[0])
             transform.transform.translation.y = float(tvec[1])
             transform.transform.translation.z = float(tvec[2])
-
+    
             transform.transform.rotation.x = qx
             transform.transform.rotation.y = qy
             transform.transform.rotation.z = qz
             transform.transform.rotation.w = qw
-
+    
             self.tf_broadcaster.sendTransform(transform)
-
+    
             self.get_logger().debug(
                 f"Published marker {int(marker_id)} TF: x={tvec[0]:.3f}, y={tvec[1]:.3f}, z={tvec[2]:.3f}"
             )
