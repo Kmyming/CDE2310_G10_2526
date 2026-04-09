@@ -1,3 +1,17 @@
+## [2.6.0] - 2026-04-09
+Integrated package updates, enhancing the docking controller with timeout and target marker capabilities, improving the mission controller's zone tracking and launch completion handling, and refining ArUco marker detection. Removed the redundant pose subscriber.
+
+### Added / Changed
+- feat(auto_explore.docking): Added `dock_cycle_timeout_sec` and `target_marker_id` parameters to `docking_controller.py` for improved control and specific marker targeting.
+- feat(auto_explore.mission_control): Enhanced `mission_controller.py` with dynamic zone tracking via TF, robust launch completion handling, and refined state transitions for docking and exploration.
+- feat(auto_explore.aruco): Updated `marker_size_m` to `0.053` and adjusted camera subscription QoS to `qos_profile_sensor_data` in `pose_publisher.py`.
+- feat(auto_explore.config): Adjusted `speed` parameter in `params.yaml` to `0.09`.
+
+### Fixed
+- fix(auto_explore.aruco): Removed the deprecated `pose_subscriber.py` node.
+- fix(auto_explore.docking): Improved `dock_done` publishing logic in `docking_controller.py` to prevent duplicates and log success/failure.
+- fix(auto_explore.aruco): Optimized `marker_detected` publishing in `pose_publisher.py` to only trigger on visibility state changes.
+
 ## [2.5.0] - 2026-04-09
 Implemented advanced zone management in the FSM, enabling dynamic identification and tracking of ArUco marker zones using TF, and preventing re-visitation.
 
