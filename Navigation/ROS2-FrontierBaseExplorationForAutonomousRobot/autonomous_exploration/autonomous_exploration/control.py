@@ -413,7 +413,7 @@ class navigationControl(Node):
             self.scan_callback,
             qos_profile_sensor_data
         )
-        self.publisher = self.create_publisher(Twist, 'cmd_vel', 10)
+        self.publisher = self.create_publisher(Twist, 'cmd_vel_nav', 10)
         # Publisher for /map_explored to notify FSM when exploration is done
         from std_msgs.msg import Bool
         self.map_explored_pub = self.create_publisher(Bool, '/map_explored', 10)
