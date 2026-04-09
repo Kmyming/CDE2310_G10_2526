@@ -129,6 +129,101 @@ The `auto_explore` package contains:
 
 ---
 
+## ⚙️ SLAM Optimization - Required Configuration
+
+**⚠️ IMPORTANT:** All team members must update the SLAM Toolbox parameters to improve map responsiveness and accuracy. This is a required setup step before running any autonomous exploration missions.
+
+### Update SLAM Mapper Parameters
+
+Navigate to the SLAM Toolbox configuration directory and update the `mapper_params_online_async.yaml` file:
+
+```bash
+# Edit the configuration file
+nano /opt/ros/humble/share/slam_toolbox/config/mapper_params_online_async.yaml
+```
+
+Apply the following parameter changes to improve SLAM efficiency and map responsiveness:
+
+```yaml
+slam_toolbox:
+    ros__parameters:
+    
+    solver_plugin: solver_plugins::CeresSolver
+    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
+    ceres_preconditioner: SCHUR_JACOBI
+    ceres_trust_strategy: LEVENBERG_MARQUARDT
+    ceres_dogleg_type: TRADITIONAL_DOGLEG
+    ceres_loss_function: None
+
+    odom_frame: odom
+    map_frame: map
+    base_frame: base_footprint
+    scan_topic: /scan
+    use_map_saver: true
+    mode: mapping
+
+    debug_logging: false
+    throttle_scans: 1
+    transform_publish_period: 0.02
+    map_update_interval: 1.0        # was 5.0 - faster map updates
+    resolution: 0.05
+    min_laser_range: 0.12           # was 0.0 - match LiDAR's (LDS-02) actual min range
+    max_laser_range: 3.5            # was 20.0 - match LiDAR's (LDS-02) actual max range
+    minimum_time_interval: 0.2      # was 0.5 - process scans more frequently
+    transform_timeout: 0.2
+    tf_buffer_duration: 30.
+    stack_size_to_use: 40000000
+    enable_interactive_mode: true
+
+    use_scan_matching: true
+    use_scan_barycenter: true
+    minimum_travel_distance: 0.2    # was 0.5 - update after smaller movements
+    minimum_travel_heading: 0.2     # was 0.5 - update after smaller rotations
+    scan_buffer_size: 10
+    scan_buffer_maximum_scan_distance: 3.5  # match max_laser_range
+    link_match_minimum_response_fine: 0.1  
+    link_scan_maximum_distance: 1.5
+    loop_search_maximum_distance: 3.0
+    do_loop_closing: true 
+    loop_match_minimum_chain_size: 10           
+    loop_match_maximum_variance_coarse: 3.0  
+    loop_match_minimum_response_coarse: 0.35    
+    loop_match_minimum_response_fine: 0.45
+
+    correlation_search_space_dimension: 0.5
+    correlation_search_space_resolution: 0.01
+    correlation_search_space_smear_deviation: 0.1 
+
+    loop_search_space_dimension: 8.0
+    loop_search_space_resolution: 0.05
+    loop_search_space_smear_deviation: 0.03
+
+    distance_variance_penalty: 0.5      
+    angle_variance_penalty: 1.0    
+    fine_search_angle_offset: 0.00349     
+    coarse_search_angle_offset: 0.349   
+    coarse_angle_resolution: 0.0349        
+    minimum_angle_penalty: 0.9
+    minimum_distance_penalty: 0.5
+    use_response_expansion: true
+    min_pass_through: 2
+    occupancy_threshold: 0.1
+```
+
+### Key Changes Summary
+
+The critical improvements made:
+- **`map_update_interval`**: Reduced from 5.0 to 1.0 seconds for faster map updates
+- **`min_laser_range`**: Set to 0.12 to match LiDAR (LDS-02) actual minimum range
+- **`max_laser_range`**: Set to 3.5 to match LiDAR (LDS-02) actual maximum range
+- **`minimum_time_interval`**: Reduced from 0.5 to 0.2 for more frequent scan processing
+- **`minimum_travel_distance`**: Reduced from 0.5 to 0.2 for updates after smaller movements
+- **`minimum_travel_heading`**: Reduced from 0.5 to 0.2 for updates after smaller rotations
+
+These changes ensure the map updates more responsively as the robot explores, resulting in better real-time mapping performance and more accurate frontier detection for autonomous exploration.
+
+---
+
 ## LEGACY: Manual Launch (For Testbedding & Reference)
 
 ### Installation (Legacy - autonomous_exploration package)
