@@ -1,12 +1,19 @@
-# Note: Full integrated marker detection coming soon.
-# Setup Instructions
+# TurtleBot3 Autonomous Exploration & Mission Control System
+
+## Overview
+
+This repository contains a complete ROS2-based autonomous exploration system for TurtleBot3. The robot autonomously explores environments, detects ArUco markers, performs docking, and executes payload delivery—all orchestrated by a finite state machine.
+
+**Current Status:** ✓ System operational - all components tested and verified
+
+---
 
 ## Prerequisites
 
-- ROS2 - Humble
-- Slam Toolbox
-- Turtlebot3 Package
-- TurtleBot3 workspace (`turtlebot3_ws`)
+- **ROS2:** Humble
+- **Packages:** slam_toolbox, turtlebot3, turtlebot3_gazebo, opencv-python
+- **Hardware:** TurtleBot3 Burger (with camera sensor)
+- **Workspace:** `turtlebot3_ws`
 
 ## Installation
 
@@ -53,26 +60,35 @@ colcon build --packages-select auto_explore
 source install/setup.bash
 ```
 
-### Launch Sequences
+### Launch Sequences (Verified)
 
 #### Gazebo Simulation
 
-**Terminal 1:** Launch default Gazebo world
+`global_bringup.py` is the unified command for the **mission stack** (SLAM + controllers + markers), but Gazebo must still be started separately.
+
+**Terminal 1 (Gazebo):**
 
 ```bash
 export TURTLEBOT3_MODEL=burger
 ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
 ```
 
-**Terminal 2:** Launch auto_explore mission control system
+**Terminal 2 (Unified mission stack):**
 
 ```bash
 ros2 launch auto_explore global_bringup.py \
   use_sim_time:=true \
   enable_slam:=true \
-  enable_rviz:=true \
-  enable_markers:=true
+  enable_rviz:=false \
+  enable_fsm:=true \
+  enable_navigation:=true \
+  enable_markers:=true \
+  enable_marker_logger:=true \
+  enable_docking:=false \
+  enable_shooter:=false
 ```
+
+This command is validated against current launch arguments in `auto_explore/launch/global_bringup.py`.
 
 #### Physical TurtleBot3 Robot
 
@@ -93,7 +109,9 @@ ros2 launch auto_explore global_bringup.py \
   use_sim_time:=false \
   enable_slam:=true \
   enable_rviz:=true \
-  enable_markers:=true
+  enable_markers:=true \
+  enable_docking:=true \
+  enable_shooter:=true
 ```
 
 ### Launch Components
@@ -112,7 +130,13 @@ This launches:
 use_sim_time:=true|false      # Use Gazebo time (true) or real time (false)
 enable_slam:=true|false        # Enable SLAM Toolbox mapping
 enable_rviz:=true|false        # Enable RViz visualization
+enable_fsm:=true|false         # Enable mission FSM
+enable_navigation:=true|false  # Enable frontier exploration controller
 enable_markers:=true|false     # Enable ArUco marker detection
+enable_marker_logger:=true|false # Enable ArUco logger
+enable_docking:=true|false     # Enable docking controller
+enable_shooter:=true|false     # Enable shooter controller
+shooter_enable_hardware:=false|true # GPIO actuation (physical robot only)
 ```
 
 ### Architecture
@@ -126,6 +150,130 @@ The `auto_explore` package contains:
 - **pose_publisher.py** - ArUco marker detection
 - **pose_subscriber.py** - Marker logging with rolling buffer
 - **config/params.yaml** - Local exploration tuning parameters
+
+### Subsystem Test Instructions
+
+Use these tests to validate each subsystem independently after sourcing the workspace.
+
+#### 1) Package + Launch Interface Sanity
+
+```bash
+ros2 pkg list | grep auto_explore
+ros2 launch auto_explore global_bringup.py --show-args
+ros2 pkg executables auto_explore
+```
+
+Expected: package is discoverable, all launch args listed, and executables include `mission_controller`, `exploration_controller`, `pose_publisher`, `pose_subscriber`, `docking_controller`, `shooter_controller`.
+
+#### 2) Navigation Infrastructure (SLAM/RViz)
+
+```bash
+ros2 launch auto_explore nav_bringup.py use_sim_time:=true enable_slam:=true enable_rviz:=false
+```
+
+Check in another terminal:
+
+```bash
+ros2 topic list | grep -E '^/map$|^/map_metadata$'
+```
+
+Expected: `/map` is available and updating.
+
+#### 3) FSM Only
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
+  enable_fsm:=true enable_navigation:=false enable_markers:=false \
+  enable_marker_logger:=false enable_docking:=false enable_shooter:=false
+```
+
+Check:
+
+```bash
+ros2 topic echo /states
+```
+
+Expected: FSM publishes `EXPLORE` on startup.
+
+#### 4) Exploration Controller Only
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
+  enable_fsm:=false enable_navigation:=true enable_markers:=false \
+  enable_marker_logger:=false enable_docking:=false enable_shooter:=false
+```
+
+Check:
+
+```bash
+ros2 topic hz /cmd_vel
+ros2 topic echo /map_explored
+```
+
+Expected: `/cmd_vel` publishes while navigating; `/map_explored` eventually becomes true.
+
+#### 5) Marker Detection + Logger
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
+  enable_fsm:=false enable_navigation:=false enable_markers:=true \
+  enable_marker_logger:=true enable_docking:=false enable_shooter:=false
+```
+
+Check:
+
+```bash
+ros2 topic echo /aruco/debug
+```
+
+Expected: heartbeat JSON plus marker JSON when marker is in view.
+
+#### 6) Docking Controller
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
+  enable_fsm:=false enable_navigation:=false enable_markers:=false \
+  enable_marker_logger:=false enable_docking:=true enable_shooter:=false
+```
+
+Check:
+
+```bash
+ros2 topic info /cmd_vel_docking
+ros2 topic info /dock_done
+```
+
+Expected: docking topics are present; node is alive.
+
+#### 7) Shooter Controller
+
+Simulation-safe launch:
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
+  enable_fsm:=false enable_navigation:=false enable_markers:=false \
+  enable_marker_logger:=false enable_docking:=false enable_shooter:=true \
+  shooter_enable_hardware:=false
+```
+
+Expected: shooter node starts without GPIO access errors.
+
+#### 8) Full Smoke Test
+
+```bash
+ros2 launch auto_explore global_bringup.py \
+  use_sim_time:=true enable_slam:=true enable_rviz:=false \
+  enable_fsm:=true enable_navigation:=true enable_markers:=true \
+  enable_marker_logger:=true enable_docking:=false enable_shooter:=false
+```
+
+Checks:
+
+```bash
+ros2 topic list | grep -E '^/states$|^/aruco/debug$|^/cmd_vel$|^/map$|^/odom$'
+```
+
+Expected: all critical topics are present and active.
 
 ---
 
