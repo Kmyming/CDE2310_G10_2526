@@ -224,6 +224,63 @@ These changes ensure the map updates more responsively as the robot explores, re
 
 ---
 
+## 📊 RViz Configuration Update - Required
+
+**⚠️ IMPORTANT:** All team members must update their local `tb3_cartographer.rviz` file to include the exploration path visualization. This displays the robot's planned exploration path in real-time during autonomous navigation.
+
+### Update RViz Configuration
+
+Replace your local RViz config file with the updated version:
+
+```bash
+cp ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz ~/tb3_cartographer.rviz.backup
+```
+
+Then update it from the repository or manually add the **Exploration Path** display:
+
+In your `tb3_cartographer.rviz` file, add this display block to the `Displays` section (before the closing of `Visualization Manager`):
+
+```yaml
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz_default_plugins/Path
+      Color: 0; 255; 255
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.05000000074505806
+      Name: Exploration Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /exploration_path
+      Value: true
+```
+
+### What This Displays
+
+- **Exploration Path Visualization** - Shows the planned frontier exploration path in **cyan** (0; 255; 255) during autonomous exploration
+- **Real-time Updates** - Path updates as the robot discovers new frontiers and plans new navigation goals
+- **Line Width**: 0.05m for clear visibility in RViz
+
+This visualization helps monitor the exploration algorithm's decision-making in real-time.
+
+---
+
 ## LEGACY: Manual Launch (For Testbedding & Reference)
 
 ### Installation (Legacy - autonomous_exploration package)
@@ -345,3 +402,4 @@ sequenceDiagram
     Note right of Agent: 1,000,000 token limit override
     Gemini-->>Agent: Return generated reviews & changelog
     Agent->>GitHub: Update PR Description, Post Reviews, Update CHANGELOG.md
+```
