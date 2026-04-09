@@ -25,6 +25,8 @@ class DockingController(Node):
         self.declare_parameter('tx_tolerance', 0.02)
         self.declare_parameter('dock_distance_m', 0.12)
         self.declare_parameter('timeout_sec', 2.0)
+        self.declare_parameter('dock_cycle_timeout_sec', 20.0)
+        self.declare_parameter('target_marker_id', -1)
         self.declare_parameter('robot_r', 0.2)
 
         self.target_marker_prefix = self.get_parameter('target_marker_prefix').value
@@ -34,6 +36,8 @@ class DockingController(Node):
         self.tx_tolerance = float(self.get_parameter('tx_tolerance').value)
         self.dock_distance_m = float(self.get_parameter('dock_distance_m').value)
         self.timeout_sec = float(self.get_parameter('timeout_sec').value)
+        self.dock_cycle_timeout_sec = float(self.get_parameter('dock_cycle_timeout_sec').value)
+        self.target_marker_id = int(self.get_parameter('target_marker_id').value)
         self.robot_r = float(self.get_parameter('robot_r').value)
 
         # FSM state gate
@@ -59,19 +63,35 @@ class DockingController(Node):
         self.timer = self.create_timer(0.05, self.control_loop)
 
         self._published_done_for_cycle = False
+        self._dock_cycle_start = None
         self.get_logger().info('Docking controller started')
 
     def state_callback(self, msg: String):
         prev = self.current_state
         self.current_state = msg.data
 
+        if self.current_state == 'DOCK' and prev != 'DOCK':
+            self._dock_cycle_start = self.get_clock().now()
+            self._published_done_for_cycle = False
+
         if self.current_state != 'DOCK' and prev == 'DOCK':
             self.cmd_pub.publish(Twist())
             self._published_done_for_cycle = False
+            self._dock_cycle_start = None
 
     def tf_callback(self, msg: TFMessage):
         for transform in msg.transforms:
             if transform.child_frame_id.startswith(self.target_marker_prefix):
+                if self.target_marker_id >= 0:
+                    marker_suffix = transform.child_frame_id.split('_')[-1]
+                    try:
+                        marker_id = int(marker_suffix)
+                    except ValueError:
+                        continue
+
+                    if marker_id != self.target_marker_id:
+                        continue
+
                 self.latest_tx = transform.transform.translation.x
                 self.latest_tz = transform.transform.translation.z
                 self.marker_visible = True
@@ -122,6 +142,12 @@ class DockingController(Node):
         if self.current_state != 'DOCK':
             return
 
+        if self._dock_cycle_start is not None:
+            elapsed = (self.get_clock().now() - self._dock_cycle_start).nanoseconds / 1e9
+            if elapsed > self.dock_cycle_timeout_sec:
+                self._publish_dock_result(False, f'dock timeout after {elapsed:.1f}s')
+                return
+
         if self._marker_is_stale():
             self.marker_visible = False
 
@@ -142,10 +168,7 @@ class DockingController(Node):
 
         if self.latest_tz <= self.dock_distance_m:
             self.cmd_pub.publish(Twist())
-            if not self._published_done_for_cycle:
-                self.done_pub.publish(Bool(data=True))
-                self._published_done_for_cycle = True
-                self.get_logger().info('Docking complete, published /dock_done=True')
+            self._publish_dock_result(True, 'docking complete')
             return
 
         # Align then approach
@@ -158,6 +181,19 @@ class DockingController(Node):
             cmd.angular.z = 0.0
 
         self.cmd_pub.publish(cmd)
+
+    def _publish_dock_result(self, success: bool, reason: str):
+        self.cmd_pub.publish(Twist())
+        if self._published_done_for_cycle:
+            return
+
+        self.done_pub.publish(Bool(data=success))
+        self._published_done_for_cycle = True
+
+        if success:
+            self.get_logger().info(f'Docking complete, published /dock_done=True ({reason})')
+        else:
+            self.get_logger().warn(f'Docking failed, published /dock_done=False ({reason})')
 
 
 def main(args=None):
