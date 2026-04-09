@@ -1,3 +1,10 @@
+## [2.4.1] - 2026-04-09
+Refined ArUco marker detection status publishing and improved docking state machine logic.
+
+### Fixed
+- fix(marker_detection): Implemented a `/marker_detected` boolean publisher in `Pose_publisher_V2_TF2.py` to indicate ArUco marker visibility.
+- fix(docking): Updated `MoveOnAruco` node to use `/cmd_vel_docking` and refined state transitions for `IDLE`, `DONE`, and `ABORT` states in `Aruco_Docker_Final.py`.
+
 ## [2.4.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/28) - 2026-04-08
 Implemented a command velocity multiplexer within the FSM to dynamically switch between navigation and docking commands, and introduced a "static" zone publisher for docking and launch states.
 
