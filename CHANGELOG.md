@@ -1,9 +1,23 @@
-## [2.3.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/28) - 2026-04-08
+## [2.4.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/28) - 2026-04-08
 Implemented a command velocity multiplexer within the FSM to dynamically switch between navigation and docking commands, and introduced a "static" zone publisher for docking and launch states.
 
 ### Added / Changed
 - feat(fsm): Added a command velocity multiplexer in `fsm_code.py` to publish `/cmd_vel` based on the current FSM state, switching between `/cmd_vel_nav` and `/cmd_vel_docking` inputs.
 - feat(fsm): Introduced a `/zone` publisher in `fsm_code.py` to indicate "static" zones during "DOCK" and "LAUNCH" states, supporting static/dynamic docking state management.
+
+## [2.3.0] - 2026-04-07
+Enhanced exploration visualization and control logic with path publishing capabilities in RViz2 and comprehensive exploration package documentation.
+
+### Added / Changed
+- feat(exploration): Added path publishing for exploration visualization in RViz2 to display the robot's navigation path during autonomous exploration.
+- feat(exploration): Enhanced path publishing with dynamic start index to provide more granular control over visualization of exploration trajectories.
+- feat(exploration): Introduced comprehensive README.md with configuration and usage instructions for the autonomous exploration package.
+- feat(exploration): Improved local control logic with enhanced obstacle avoidance and navigation capabilities.
+- feat(exploration): Added publisher for map exploration status to notify the FSM of exploration completion.
+- feat(config): Adjusted speed parameter in `params.yaml` for improved exploration performance.
+
+### Documentation
+- docs(exploration): Added example images for physical test maze to guide manual testing procedures.
 
 ## [2.2.0] - 2026-04-07
 Implemented autonomous docking capabilities using ArUco markers and enhanced payload delivery servo control.
