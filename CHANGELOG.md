@@ -1,3 +1,13 @@
+## [2.5.0] - 2026-04-09
+Implemented advanced zone management in the FSM, enabling dynamic identification and tracking of ArUco marker zones using TF, and preventing re-visitation.
+
+### Added / Changed
+- feat(fsm): Implemented dynamic zone identification within `fsm_code.py` by subscribing to `/tf` messages, distinguishing between "static" (`aruco_marker_0`) and "dynamic" (`aruco_marker_1`) zones.
+- feat(fsm): Introduced a mechanism in `fsm_code.py` to track and prevent re-visiting already processed zones, ensuring unique marker interactions.
+- feat(fsm): Updated the `/zone` publisher in `fsm_code.py` to dynamically publish the identified "static" or "dynamic" zone during "DOCK" and "LAUNCH" states, replacing the previous hardcoded "static" value.
+- feat(fsm): Modified the FSM's "EXPLORE" state transition in `fsm_code.py` to require an identified `current_zone` before initiating a "DOCK" sequence.
+- feat(fsm): Adjusted `self.required_markers` in `fsm_code.py` from 3 to 2.
+
 ## [2.4.1] - 2026-04-09
 Refined ArUco marker detection status publishing and improved docking state machine logic.
 
