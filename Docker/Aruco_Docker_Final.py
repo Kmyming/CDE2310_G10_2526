@@ -18,7 +18,7 @@ class MoveOnAruco(Node):
     def __init__(self):
         super().__init__('move_on_aruco')
 
-        self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.cmd_pub = self.create_publisher(Twist, '/cmd_vel_docking', 10)
         self.status_pub = self.create_publisher(Bool, '/dock_done', 10)
         self.tf_sub = self.create_subscription(TFMessage, '/tf', self.tf_callback, 10)
         self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
@@ -329,7 +329,7 @@ class MoveOnAruco(Node):
         avoidance_vel = 0.0
         avoidance_ang = 0.0
         avoidance_vel, avoidance_ang = self.localControl(self.scan)
-        if (avoidance_vel is not None and avoidance_ang is not None and self.state not in ["DONE", "FINAL_APPROACH", "SPECIAL_SEARCH", "ABORT", "OBSTACLE_AVOIDANCE"]):
+        if (avoidance_vel is not None and avoidance_ang is not None and self.state not in ["DONE", "FINAL_APPROACH", "SPECIAL_SEARCH", "ABORT", "OBSTACLE_AVOIDANCE", "IDLE"]):
             self.get_logger().info("OBSTACLE AVOIDANCE ACTIVATED")
             self.state = "OBSTACLE_AVOIDANCE"
 
@@ -339,7 +339,7 @@ class MoveOnAruco(Node):
 
         # Only stop on marker loss in states that truly need live marker feedback
         if self.state != "DONE" and not self.marker_visible:
-            if self.state in ["APPROACH_1", "FINAL_APPROACH"]:
+            if self.state in ["APPROACH_1"]:
                 self.cmd_pub.publish(Twist())
                 self.get_logger().info(f"Marker lost -> stopped | state={self.state}")
                 self.set_state("ABORT")
@@ -490,12 +490,14 @@ class MoveOnAruco(Node):
         # -------------------------
         elif self.state == "DONE":
             self.cmd_pub.publish(Twist())
+            self.state = "IDLE"   # after docking, go to IDLE where we do nothing until a new marker is seen
 
         # -------------------------
         # ABORT
         # -------------------------
         elif self.state == "ABORT":
             self.cmd_pub.publish(Twist())
+            self.state = "IDLE"   # after aborting, go to IDLE where we do nothing until a new marker is seen
 
         # -------------------------
         # OBSTACLE AVOIDANCE
