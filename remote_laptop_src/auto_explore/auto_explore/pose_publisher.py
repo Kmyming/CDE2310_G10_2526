@@ -4,6 +4,7 @@ import math
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 
 from sensor_msgs.msg import Image, CameraInfo
 from geometry_msgs.msg import TransformStamped
@@ -54,7 +55,7 @@ class ArucoPoseStreamer(Node):
         self.declare_parameter('image_topic', '/camera/image_raw')
         self.declare_parameter('camera_info_topic', '/camera/camera_info')
         self.declare_parameter('camera_frame', 'camera_optical_frame')
-        self.declare_parameter('marker_size_m', 0.05)
+        self.declare_parameter('marker_size_m', 0.053)
         self.declare_parameter('dictionary', 'DICT_4X4_250')
 
         self.image_topic = self.get_parameter('image_topic').value
@@ -74,8 +75,8 @@ class ArucoPoseStreamer(Node):
         self._warned_bad_camerainfo = False
         self._used_fallback_intrinsics = False
 
-        self.create_subscription(CameraInfo, self.camera_info_topic, self.camera_info_cb, 10)
-        self.create_subscription(Image, self.image_topic, self.image_cb, 10)
+        self.create_subscription(CameraInfo, self.camera_info_topic, self.camera_info_cb, qos_profile_sensor_data)
+        self.create_subscription(Image, self.image_topic, self.image_cb, qos_profile_sensor_data)
 
         self.aruco_dict = self._get_aruco_dict(dict_name)
         if hasattr(cv2.aruco, 'DetectorParameters_create'):
@@ -84,6 +85,7 @@ class ArucoPoseStreamer(Node):
             self.aruco_params = cv2.aruco.DetectorParameters()
 
         self.timer = self.create_timer(1.0, self.heartbeat)
+        self._marker_visible = None
 
         self.get_logger().info(
             f'ArUco streamer started image={self.image_topic}, camera_info={self.camera_info_topic}, '
@@ -154,6 +156,7 @@ class ArucoPoseStreamer(Node):
             frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         except Exception as exc:
             self.get_logger().error(f'cv_bridge failed: {exc}')
+            self._publish_marker_detected(False)
             return
 
         self._ensure_fallback_intrinsics(frame)
@@ -166,17 +169,23 @@ class ArucoPoseStreamer(Node):
         )
 
         if ids is None or len(ids) == 0:
+            self._publish_marker_detected(False)
             return
 
-        rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
-            corners,
-            self.marker_size_m,
-            self.K,
-            self.D,
-        )
+        try:
+            rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
+                corners,
+                self.marker_size_m,
+                self.K,
+                self.D,
+            )
+        except Exception as exc:
+            self.get_logger().error(f'Pose estimation failed: {exc}')
+            self._publish_marker_detected(False)
+            return
 
         marker_list = []
-        self.marker_detected_pub.publish(Bool(data=True))
+        self._publish_marker_detected(True)
 
         frame_id = msg.header.frame_id if msg.header.frame_id else self.camera_frame
 
@@ -209,6 +218,13 @@ class ArucoPoseStreamer(Node):
         out = String()
         out.data = json.dumps({'frame_id': frame_id, 'markers': marker_list})
         self.pub_debug.publish(out)
+
+    def _publish_marker_detected(self, visible: bool):
+        if self._marker_visible == visible:
+            return
+
+        self._marker_visible = visible
+        self.marker_detected_pub.publish(Bool(data=visible))
 
 
 def main():

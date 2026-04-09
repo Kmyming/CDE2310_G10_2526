@@ -103,7 +103,7 @@ def generate_launch_description():
             {'use_sim_time': use_sim_time},
             {'image_topic': '/camera/image_raw'},
             {'camera_info_topic': '/camera/camera_info'},
-            {'marker_size_m': 0.05},
+            {'marker_size_m': 0.053},
             {'dictionary': 'DICT_4X4_250'},
         ],
         condition=IfCondition(enable_markers)
@@ -127,6 +127,8 @@ def generate_launch_description():
         output='screen',
         parameters=[
             {'use_sim_time': use_sim_time},
+            {'dock_cycle_timeout_sec': 20.0},
+            {'target_marker_id': -1},
         ],
         condition=IfCondition(enable_docking)
     )
