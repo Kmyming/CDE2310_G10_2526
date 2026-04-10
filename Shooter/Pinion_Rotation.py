@@ -1,137 +1,102 @@
 # MG90S 360° Continuous Rotation - Rack & Pinion Control
-# Raspberry Pi 4B with RPi.GPIO
-#
-# MECHANISM:
-#   Phase 1: Rotate 170° clockwise at full speed  (teeth engage rack)
-#   Phase 2: Stop and hold position for HOLD_DURATION seconds
-#   Phase 3: Rotate 360° more clockwise           (teeth disengage)
-#   Phase 4: Stop, pause, repeat next cycle
-#
-# ⚠️  Angle control is TIME-BASED (no encoder feedback)
-#     Calibrate SECONDS_PER_DEGREE for your specific servo before use!
+# Raspberry Pi 4B with PIGPIO (Hardware PWM)
 #
 # Wiring:
 #   Orange = GPIO13 (Pin 33), Red = OpenCR 5V, Brown = OpenCR GND
 
-import RPi.GPIO as GPIO
+import pigpio
 import time
 
 # ---------------------------------------------------------
-# USER PARAMETERS — edit these for your application
+# USER PARAMETERS
 # ---------------------------------------------------------
-HOLD_DURATION   = 5.0     # seconds: how long to hold after 170° rotation
-CYCLE_PAUSE = 5.0
-# NUM_CYCLES      = 3       # how many cycles to run (0 = infinite)
-# # ---------------------------------------------------------
+HOLD_DURATION   = 7     # seconds
+CYCLE_PAUSE     = 5     # seconds
 
 # --- Servo Configuration ---
-SERVO_PIN    = 17        # GPIO17 (Physical Pin 33)
-PWM_FREQ     = 50         # 50Hz standard for servos
-
-# --- Duty Cycle values ---
-# Formula: (pulse_us / 20000us) × 100
-# 1500µs → (1500/20000) × 100 = 7.5%  → STOP
-# 2000µs → (2000/20000) × 100 = 10.0% → FULL SPEED CW
-STOP_DUTY     = 7.5       # 1500µs — servo stops
-FORWARD_DUTY  = 8      # 2000µs — full speed clockwise
+SERVO_PIN    = 13         # GPIO13
+# pigpio uses microseconds (us) directly for set_servo_pulsewidth
+# 1500us is the neutral position for most servos
+STOP_US      = 1500       
+FORWARD_US   = 1000       # 1000us = Full speed clockwise
 
 # --- Fixed rotation angles ---
-PHASE1_DEGREES = 170      # Phase 1: engage rack
-PHASE3_DEGREES = 360      # Phase 3: disengage rack
-
-# --- Time-based angle calculation ---
-# At 120 RPM: 1 full rotation = 0.5 seconds
-# Measure your actual servo and update SECONDS_PER_REV if needed
-RPM                = 120
-SECONDS_PER_REV    = 60.0 / RPM               # = 0.5 seconds
-SECONDS_PER_DEGREE = SECONDS_PER_REV / 360.0  # = 0.001389 seconds/degree
-
-def degrees_to_time(degrees):
-    """Convert degrees of rotation to time in seconds."""
-    return degrees * SECONDS_PER_DEGREE
+PHASE1_DEGREES = 170      
+PHASE3_DEGREES = 360      
 
 # --- GPIO Setup ---
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(SERVO_PIN, GPIO.OUT)
-pwm = GPIO.PWM(SERVO_PIN, PWM_FREQ)
-pwm.start(STOP_DUTY)      # always start in STOP state
-time.sleep(0.5)            # let servo settle before first command
+pi = pigpio.pi()
+
+if not pi.connected:
+    print("CRITICAL: Could not connect to pigpiod. Run 'sudo pigpiod' in terminal first!")
+    exit()
+
+# Initialize in STOP state
+pi.set_servo_pulsewidth(SERVO_PIN, STOP_US)
+time.sleep(0.5)
 
 # --- Motor Control Functions ---
 
 def forward():
     """Rotate clockwise at full speed."""
-    pwm.ChangeDutyCycle(FORWARD_DUTY)
+    pi.set_servo_pulsewidth(SERVO_PIN, FORWARD_US)
 
 def stop_motor():
-    """Stop the servo. 1500µs = 7.5% duty cycle."""
-    pwm.ChangeDutyCycle(STOP_DUTY)
+    """Stop the servo using hardware-timed neutral pulse."""
+    pi.set_servo_pulsewidth(SERVO_PIN, STOP_US)
 
 def rotate_degrees(degrees, label=""):
     """
-    Rotate servo by a given number of degrees using time-based control.
-    Then stops the servo.
+    Rotate servo using your measured timings.
+    Phase 1 (Engage): 0.581s
+    Phase 3 (Disengage): 0.42s
     """
-    duration = degrees_to_time(degrees)
-    print(f"  Rotating {degrees}° ({label}) → duration: {duration:.4f}s")
+    print(f"  Rotating {degrees}° ({label})")
     forward()
-    time.sleep(duration)
+    
+    if label == "disengaging rack":
+        time.sleep(0.35)
+    else:
+        # Phase 1: 170 degrees (engaging rack)
+        time.sleep(0.44)
+        
     stop_motor()
 
 def cleanup():
-    """Always called on exit — stops servo and releases GPIO."""
+    """Stops PWM signal entirely and closes connection."""
     stop_motor()
     time.sleep(0.3)
-    pwm.stop()
-    GPIO.cleanup()
-    print("GPIO cleaned up.")
+    pi.set_servo_pulsewidth(SERVO_PIN, 0) # Kill signal for safety
+    pi.stop()
+    print("PIGPIO connection closed.")
 
 # --- Single Cycle ---
 
 def run_cycle():
-
-
-    # --- Phase 1: Rotate 170° clockwise (teeth engage rack) ---
+    # --- Phase 1: Engage rack ---
     print(f"[Phase 1] Rotating 170° CW — teeth engaging rack")
     rotate_degrees(PHASE1_DEGREES, label="engaging rack")
 
-    # --- Phase 2: Hold position for HOLD_DURATION ---
+    # --- Phase 2: Hold position (Jitter-free hardware PWM) ---
     print(f"[Phase 2] Holding position for {HOLD_DURATION}s")
     time.sleep(HOLD_DURATION)
 
-    # --- Phase 3: Rotate 360° more clockwise (teeth disengage) ---
-    print(f"[Phase 3] Rotating 360° CW — teeth disengaging rack")
+    # --- Phase 3: Disengage rack ---
+    print(f"[Phase 3] Rotating back to normal position — teeth disengaging rack")
     rotate_degrees(PHASE3_DEGREES, label="disengaging rack")
 
-    # --- Phase 4: Pause before next cycle ---
-   
+    # --- Phase 4: Pause ---
+    print(f"[Phase 4] Cycle complete. Waiting {CYCLE_PAUSE}s")
     time.sleep(CYCLE_PAUSE)
 
 # --- Main ---
 
 if __name__ == "__main__":
-    print("=== MG90S Rack & Pinion Controller ===")
-    print(f"Phase 1       : 170° CW at full speed")
-    print(f"Phase 2       : Hold for {HOLD_DURATION}s")
-    print(f"Phase 3       : 360° CW at full speed")
-    print(f"Seconds/degree: {SECONDS_PER_DEGREE:.6f}s")
-    print(f"Cycles        : {'Infinite' if NUM_CYCLES == 0 else NUM_CYCLES}")
-
-    # try:
-    #     if NUM_CYCLES == 0:
-    #         cycle = 1
-    #         while True:
-    #             run_cycle(cycle)
-    #             cycle += 1
-    #     else:
-    #         for cycle in range(1, NUM_CYCLES + 1):
+    print("=== MG90S Rack & Pinion Controller (PIGPIO) ===")
+    
+    # Run two cycles as per your original main logic
+    run_cycle()
     run_cycle()
 
-    #     print("\nAll cycles complete.")
-    #     stop_motor()
-
-    # except KeyboardInterrupt:
-    #     print("\nStopped by user (Ctrl+C)")
     stop_motor()
-    # finally:
     cleanup()
