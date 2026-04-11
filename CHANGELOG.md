@@ -1,3 +1,12 @@
+## [2.8.0] - 2026-04-11
+Refined shooter mechanism parameters for enhanced performance and updated documentation for new launch configurations.
+
+### Added / Changed
+- feat(shooter): Tuned shooter parameters in `Shooter/Pinion_Rotation.py` for drift calibration and continuous shooting, introducing configurable engagement profiles (mild, medium, strong), per-cycle engagement time trimming, and updated timing parameters (`HOLD_DURATION`, `CYCLE_PAUSE`, `ENGAGE_US`, `DISENGAGE_US`, `ENGAGE_TIME_S`, `DISENGAGE_TIME_S`, `ENGAGE_TRIM_PER_EXTRA_CYCLE_S`, `ENGAGE_TRIM_PER_EXTRA_CYCLE_S_2`, `ENGAGE_MIN_TIME_S`).
+
+### Documentation
+- docs(README): Updated `README.md` to include the `shooter_enable_hardware` launch argument and clarified launch command usage.
+
 # Changelog
 ## [2.7.0] - 2026-04-11
 
