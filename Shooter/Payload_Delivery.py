@@ -7,9 +7,7 @@ from rclpy.node import Node
 from tf2_msgs.msg import TFMessage
 import RPi.GPIO as GPIO
 import time
-import Pinion_Rotation
-
-
+import Pinion_Rotation as pinion
 
 class ArucoTFListener(Node):
     def __init__(self):
@@ -33,14 +31,12 @@ class ArucoTFListener(Node):
 
         # GPIO setup for Gates control
         GPIO.setmode(GPIO.BCM)
-        self.gate = 17
-        self.rack = 27
-        GPIO.setup(self.rack, GPIO.OUT, initial=GPIO.LOW)
+        self.gate = 12
+        GPIO.setup(self.gate, GPIO.OUT)
         self.gate_delay = 0.5
         self.rack_delay = 0.3
         self.p = GPIO.PWM(self.gate, 50)
         self.p.start(2.5) #start at 0 degrees
-
         self.dynamic_counter = 0 #Counter for dynamic delivery, to ensure we shoot only 3 times when the marker is in the correct position
 
 
@@ -161,10 +157,14 @@ class ArucoTFListener(Node):
         self.set_servo_angle(90)  # Open Gate
         time.sleep(self.gate_delay)
         self.set_servo_angle(0)   # Close Gate
-        GPIO.output(self.rack, GPIO.HIGH)  # Push Rack
-        time.sleep(self.rack_delay)
-        GPIO.output(self.rack, GPIO.LOW)   # Pull Rack
-
+        GPIO.cleanup()  # Clean up GPIO before using pigpio
+        # Use the pinion rotation controller to cycle the rack/pinion
+        try:
+            pinion.run_cycle(0)
+        except Exception as e:
+            # Fallback to GPIO toggle if pigpio/pinion fails
+            self.get_logger().error(f"Pinion run_cycle failed: {e}. Falling back to GPIO toggle")
+    
     def set_servo_angle(self, angle):
         """
         Calculates duty cycle for specific angle and stops PWM to prevent jitter.
@@ -177,7 +177,7 @@ class ArucoTFListener(Node):
         self.p.ChangeDutyCycle(duty_cycle)
         
         # Allow time for mechanical arm to move
-        time.sleep(0.5)
+        time.sleep(1)
         
         # SET TO 2.5 TO STOP JITTER: This kills the signal so the servo stays still
         self.p.ChangeDutyCycle(2.5)
