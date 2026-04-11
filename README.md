@@ -1,12 +1,19 @@
-# Note: Full integrated marker detection coming soon.
-# Setup Instructions
+# TurtleBot3 Autonomous Exploration & Mission Control System
+
+## Overview
+
+This repository contains a complete ROS2-based autonomous exploration system for TurtleBot3. The robot autonomously explores environments, detects ArUco markers, performs docking, and executes payload delivery—all orchestrated by a finite state machine.
+
+**Current Status:** ✓ System operational - all components tested and verified
+
+---
 
 ## Prerequisites
 
-- ROS2 - Humble
-- Slam Toolbox
-- Turtlebot3 Package
-- TurtleBot3 workspace (`turtlebot3_ws`)
+- **ROS2:** Humble
+- **Packages:** slam_toolbox, turtlebot3, turtlebot3_gazebo, opencv-python
+- **Hardware:** TurtleBot3 Burger (with camera sensor)
+- **Workspace:** `turtlebot3_ws`
 
 ## Installation
 
@@ -53,26 +60,35 @@ colcon build --packages-select auto_explore
 source install/setup.bash
 ```
 
-### Launch Sequences
+### Launch Sequences (Verified)
 
 #### Gazebo Simulation
 
-**Terminal 1:** Launch default Gazebo world
+`global_bringup.py` is the unified command for the **mission stack** (SLAM + controllers + markers), but Gazebo must still be started separately.
+
+**Terminal 1 (Gazebo):**
 
 ```bash
 export TURTLEBOT3_MODEL=burger
 ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
 ```
 
-**Terminal 2:** Launch auto_explore mission control system
+**Terminal 2 (Unified mission stack):**
 
 ```bash
 ros2 launch auto_explore global_bringup.py \
   use_sim_time:=true \
   enable_slam:=true \
-  enable_rviz:=true \
-  enable_markers:=true
+  enable_rviz:=false \
+  enable_fsm:=true \
+  enable_navigation:=true \
+  enable_markers:=true \
+  enable_marker_logger:=true \
+  enable_docking:=false \
+  enable_shooter:=false
 ```
+
+This command is validated against current launch arguments in `auto_explore/launch/global_bringup.py`.
 
 #### Physical TurtleBot3 Robot
 
@@ -93,7 +109,9 @@ ros2 launch auto_explore global_bringup.py \
   use_sim_time:=false \
   enable_slam:=true \
   enable_rviz:=true \
-  enable_markers:=true
+  enable_markers:=true \
+  enable_docking:=true \
+  enable_shooter:=true
 ```
 
 ### Launch Components
@@ -112,7 +130,13 @@ This launches:
 use_sim_time:=true|false      # Use Gazebo time (true) or real time (false)
 enable_slam:=true|false        # Enable SLAM Toolbox mapping
 enable_rviz:=true|false        # Enable RViz visualization
+enable_fsm:=true|false         # Enable mission FSM
+enable_navigation:=true|false  # Enable frontier exploration controller
 enable_markers:=true|false     # Enable ArUco marker detection
+enable_marker_logger:=true|false # Enable ArUco logger
+enable_docking:=true|false     # Enable docking controller
+enable_shooter:=true|false     # Enable shooter controller
+shooter_enable_hardware:=false|true # GPIO actuation (physical robot only)
 ```
 
 ### Architecture
@@ -126,6 +150,282 @@ The `auto_explore` package contains:
 - **pose_publisher.py** - ArUco marker detection
 - **pose_subscriber.py** - Marker logging with rolling buffer
 - **config/params.yaml** - Local exploration tuning parameters
+
+### Subsystem Test Instructions
+
+Use these tests to validate each subsystem independently after sourcing the workspace.
+
+#### 1) Package + Launch Interface Sanity
+
+```bash
+ros2 pkg list | grep auto_explore
+ros2 launch auto_explore global_bringup.py --show-args
+ros2 pkg executables auto_explore
+```
+
+Expected: package is discoverable, all launch args listed, and executables include `mission_controller`, `exploration_controller`, `pose_publisher`, `pose_subscriber`, `docking_controller`, `shooter_controller`.
+
+#### 2) Navigation Infrastructure (SLAM/RViz)
+
+```bash
+ros2 launch auto_explore nav_bringup.py use_sim_time:=true enable_slam:=true enable_rviz:=false
+```
+
+Check in another terminal:
+
+```bash
+ros2 topic list | grep -E '^/map$|^/map_metadata$'
+```
+
+Expected: `/map` is available and updating.
+
+#### 3) FSM Only
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
+  enable_fsm:=true enable_navigation:=false enable_markers:=false \
+  enable_marker_logger:=false enable_docking:=false enable_shooter:=false
+```
+
+Check:
+
+```bash
+ros2 topic echo /states
+```
+
+Expected: FSM publishes `EXPLORE` on startup.
+
+#### 4) Exploration Controller Only
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
+  enable_fsm:=false enable_navigation:=true enable_markers:=false \
+  enable_marker_logger:=false enable_docking:=false enable_shooter:=false
+```
+
+Check:
+
+```bash
+ros2 topic hz /cmd_vel
+ros2 topic echo /map_explored
+```
+
+Expected: `/cmd_vel` publishes while navigating; `/map_explored` eventually becomes true.
+
+#### 5) Marker Detection + Logger
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
+  enable_fsm:=false enable_navigation:=false enable_markers:=true \
+  enable_marker_logger:=true enable_docking:=false enable_shooter:=false
+```
+
+Check:
+
+```bash
+ros2 topic echo /aruco/debug
+```
+
+Expected: heartbeat JSON plus marker JSON when marker is in view.
+
+#### 6) Docking Controller
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
+  enable_fsm:=false enable_navigation:=false enable_markers:=false \
+  enable_marker_logger:=false enable_docking:=true enable_shooter:=false
+```
+
+Check:
+
+```bash
+ros2 topic info /cmd_vel_docking
+ros2 topic info /dock_done
+```
+
+Expected: docking topics are present; node is alive.
+
+#### 7) Shooter Controller
+
+Simulation-safe launch:
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
+  enable_fsm:=false enable_navigation:=false enable_markers:=false \
+  enable_marker_logger:=false enable_docking:=false enable_shooter:=true \
+  shooter_enable_hardware:=false
+```
+
+Expected: shooter node starts without GPIO access errors.
+
+#### 8) Full Smoke Test
+
+```bash
+ros2 launch auto_explore global_bringup.py \
+  use_sim_time:=true enable_slam:=true enable_rviz:=false \
+  enable_fsm:=true enable_navigation:=true enable_markers:=true \
+  enable_marker_logger:=true enable_docking:=false enable_shooter:=false
+```
+
+Checks:
+
+```bash
+ros2 topic list | grep -E '^/states$|^/aruco/debug$|^/cmd_vel$|^/map$|^/odom$'
+```
+
+Expected: all critical topics are present and active.
+
+---
+
+## ⚙️ SLAM Optimization - Required Configuration
+
+**⚠️ IMPORTANT:** All team members must update the SLAM Toolbox parameters to improve map responsiveness and accuracy. This is a required setup step before running any autonomous exploration missions.
+
+### Update SLAM Mapper Parameters
+
+Navigate to the SLAM Toolbox configuration directory and update the `mapper_params_online_async.yaml` file:
+
+```bash
+# Edit the configuration file
+nano /opt/ros/humble/share/slam_toolbox/config/mapper_params_online_async.yaml
+```
+
+Apply the following parameter changes to improve SLAM efficiency and map responsiveness:
+
+```yaml
+slam_toolbox:
+    ros__parameters:
+    
+    solver_plugin: solver_plugins::CeresSolver
+    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
+    ceres_preconditioner: SCHUR_JACOBI
+    ceres_trust_strategy: LEVENBERG_MARQUARDT
+    ceres_dogleg_type: TRADITIONAL_DOGLEG
+    ceres_loss_function: None
+
+    odom_frame: odom
+    map_frame: map
+    base_frame: base_footprint
+    scan_topic: /scan
+    use_map_saver: true
+    mode: mapping
+
+    debug_logging: false
+    throttle_scans: 1
+    transform_publish_period: 0.02
+    map_update_interval: 1.0        # was 5.0 - faster map updates
+    resolution: 0.05
+    min_laser_range: 0.12           # was 0.0 - match LiDAR's (LDS-02) actual min range
+    max_laser_range: 3.5            # was 20.0 - match LiDAR's (LDS-02) actual max range
+    minimum_time_interval: 0.2      # was 0.5 - process scans more frequently
+    transform_timeout: 0.2
+    tf_buffer_duration: 30.
+    stack_size_to_use: 40000000
+    enable_interactive_mode: true
+
+    use_scan_matching: true
+    use_scan_barycenter: true
+    minimum_travel_distance: 0.2    # was 0.5 - update after smaller movements
+    minimum_travel_heading: 0.2     # was 0.5 - update after smaller rotations
+    scan_buffer_size: 10
+    scan_buffer_maximum_scan_distance: 3.5  # match max_laser_range
+    link_match_minimum_response_fine: 0.1  
+    link_scan_maximum_distance: 1.5
+    loop_search_maximum_distance: 3.0
+    do_loop_closing: true 
+    loop_match_minimum_chain_size: 10           
+    loop_match_maximum_variance_coarse: 3.0  
+    loop_match_minimum_response_coarse: 0.35    
+    loop_match_minimum_response_fine: 0.45
+
+    correlation_search_space_dimension: 0.5
+    correlation_search_space_resolution: 0.01
+    correlation_search_space_smear_deviation: 0.1 
+
+    loop_search_space_dimension: 8.0
+    loop_search_space_resolution: 0.05
+    loop_search_space_smear_deviation: 0.03
+
+    distance_variance_penalty: 0.5      
+    angle_variance_penalty: 1.0    
+    fine_search_angle_offset: 0.00349     
+    coarse_search_angle_offset: 0.349   
+    coarse_angle_resolution: 0.0349        
+    minimum_angle_penalty: 0.9
+    minimum_distance_penalty: 0.5
+    use_response_expansion: true
+    min_pass_through: 2
+    occupancy_threshold: 0.1
+```
+
+### Key Changes Summary
+
+The critical improvements made:
+- **`map_update_interval`**: Reduced from 5.0 to 1.0 seconds for faster map updates
+- **`min_laser_range`**: Set to 0.12 to match LiDAR (LDS-02) actual minimum range
+- **`max_laser_range`**: Set to 3.5 to match LiDAR (LDS-02) actual maximum range
+- **`minimum_time_interval`**: Reduced from 0.5 to 0.2 for more frequent scan processing
+- **`minimum_travel_distance`**: Reduced from 0.5 to 0.2 for updates after smaller movements
+- **`minimum_travel_heading`**: Reduced from 0.5 to 0.2 for updates after smaller rotations
+
+These changes ensure the map updates more responsively as the robot explores, resulting in better real-time mapping performance and more accurate frontier detection for autonomous exploration.
+
+---
+
+## 📊 RViz Configuration Update - Required
+
+**⚠️ IMPORTANT:** All team members must update their local `tb3_cartographer.rviz` file to include the exploration path visualization. This displays the robot's planned exploration path in real-time during autonomous navigation.
+
+### Update RViz Configuration
+
+Replace your local RViz config file with the updated version:
+
+```bash
+cp ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz ~/tb3_cartographer.rviz.backup
+```
+
+Then update it from the repository or manually add the **Exploration Path** display:
+
+In your `tb3_cartographer.rviz` file, add this display block to the `Displays` section (before the closing of `Visualization Manager`):
+
+```yaml
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz_default_plugins/Path
+      Color: 0; 255; 255
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.05000000074505806
+      Name: Exploration Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /exploration_path
+      Value: true
+```
+
+### What This Displays
+
+- **Exploration Path Visualization** - Shows the planned frontier exploration path in **cyan** (0; 255; 255) during autonomous exploration
+- **Real-time Updates** - Path updates as the robot discovers new frontiers and plans new navigation goals
+- **Line Width**: 0.05m for clear visibility in RViz
+
+This visualization helps monitor the exploration algorithm's decision-making in real-time.
 
 ---
 
@@ -177,11 +477,15 @@ rviz2 -d ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartogr
 ros2 run autonomous_exploration control
 ```
 
-# CI/CD & Automated Changelog Infrastructure
+# CI/CD & Automated AI Code Review & Changelog Infrastructure
 
-This repository utilizes an automated Continuous Integration (CI) pipeline to standardize our release documentation, enforce Semantic Versioning (SemVer 2.0.0), and reduce administrative overhead. 
+This repository uses a custom CI/CD pipeline powered by [Qodo PR-Agent](https://github.com/qodo-ai/pr-agent) and Google's **Gemini 2.5 Flash** model to automate pull request management and documentation, standardize our release documentation, enforce Semantic Versioning (SemVer 2.0.0), and reduce administrative overhead. 
 
-The pipeline is powered by a custom GitHub Action running **Qodo Merge (PR-Agent)**, utilizing the **Google Gemini API** to analyze ROS 2 code diffs and automatically generate highly detailed `CHANGELOG.md` updates.
+Whenever a new Pull Request is opened, the pipeline automatically executes the following suite:
+1. **Hardware-Aware Commit Scraping:** Bypasses Git's "binary blindspot" by scraping local git history to document physical CAD changes (`.SLDPRT`, `.STL`, etc.) before the AI runs.
+2. **Auto-Describe:** Analyzes the code diff and commit history to automatically write a comprehensive PR Title and Description.
+3. **Auto-Review & Improve:** Scans the code for bugs and leaves actionable, inline code suggestions.
+4. **Auto-Changelog:** Generates a strict, version-bumped `CHANGELOG.md` block based on your branch's features and fixes.
 
 
 ## 🛠️ The Developer Workflow
@@ -198,6 +502,8 @@ The AI agent calculates the next version number strictly based on the prefixes u
 * `docs: ` (Updates to README, comments, or documentation)
 * `test: ` (Adding or updating tests/simulations)
 
+for hardware/CAD changes: **BE DESCRIPTIVE** in your commit messages as the CHANGELOG.md will be updated based on your commit messages.
+
 *Example: `feat(navigation): integrate frontier exploration algorithm`*
 
 ### 2. Open a Pull Request
@@ -207,21 +513,41 @@ Push your code to your **LOCAL BRANCH** and push that branch to GitHub.
 git push origin [local_branch_name]
 ```
 Open a Pull Request against `main`. 
-* **The Auto-Review:** The GitHub Action will immediately wake up, analyze your code diffs, and post a summary of your changes as a comment on the PR. **VERIFY** the documentation on your own and make necessary edits.
-
-### 3. Trigger the Changelog Update
-Once you are satisfied with your code and ready to merge, reply to the PR comment section with this exact command:
-```text
-/update_changelog
-```
 if you have Github CLI:
 ```bash
-gh pr create --title "$(git log -1 --pretty=%s)" --body "/update_changelog"
+gh pr create --fill
 ```
----
+(auto-fills latest commit message as title)
+* **The Auto-Review & changelog update:** The GitHub Action will immediately wake up, analyze your code diffs, and post a summary of your changes as a comment on the PR. **VERIFY** the documentation on your own and make necessary edits.
 
-## 🏗️ Architecture
-- **Trigger:** GitHub Pull Requests (Open, Reopen, Synchronize).
-- **Engine:** GitHub Actions (`.github/workflows/pr_agent.yml`).
-- **AI Model:** Google Gemini 2.5 Flash.
-- **Rules Engine:** `.pr_agent.toml` (Contains strict LLM prompting for ROS 2 context and SemVer logic).
+**Manual Commands:**
+If you need the AI to re-run a specific task, you can type any of these commands as a standard comment in your Pull Request thread:
+* `/update_changelog` - Regenerates the changelog.
+* `/describe` - Regenerates the PR description.
+* `/review` - Re-runs the high-level review.
+* `/improve` - Scans for new inline code improvements.
+* `/ask [question]` - Ask the AI a specific question about the PR's code.
+
+## 🏗️ AI Pipeline Architecture
+
+This repository utilizes a highly customized, hardware-aware CI/CD pipeline, reads binary CAD diffs (e.g., SolidWorks, STL files) by using a pre-processing commit scraper combined with a native Python implementation of [Qodo PR-Agent](https://github.com/qodo-ai/pr-agent), powered by **Google Gemini 2.5 Flash**.
+
+### Data Flow Diagram
+
+```mermaid
+sequenceDiagram
+    actor Developer
+    participant GitHub as GitHub Actions
+    participant Scraper as Context Scraper (Bash)
+    participant Agent as PR-Agent CLI (Python)
+    participant Gemini as Gemini 2.5 Flash
+
+    Developer->>GitHub: Open PR or Post Comment
+    GitHub->>Scraper: Trigger Workflow (fetch-depth: 0)
+    Scraper->>GitHub: Read git log & inject commits into PR Body
+    GitHub->>Agent: Initialize raw Python environment
+    Agent->>Gemini: Send code diff + commit history payload
+    Note right of Agent: 1,000,000 token limit override
+    Gemini-->>Agent: Return generated reviews & changelog
+    Agent->>GitHub: Update PR Description, Post Reviews, Update CHANGELOG.md
+```
