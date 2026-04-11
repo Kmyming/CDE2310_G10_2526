@@ -1,3 +1,11 @@
+# Changelog
+## [2.7.0] - 2026-04-11
+
+Introduced a new hardware control script for the shooter's rack and pinion mechanism, enabling precise servo-driven engagement and disengagement.
+
+### Added / Changed
+- feat(shooter): Implemented `Shooter/Pinion_Rotation.py` to control an MG90S continuous rotation servo for a rack and pinion system using `pigpio` on Raspberry Pi. This includes functions for forward rotation, stopping, timed degree rotation, and a full cycle of engaging, holding, and disengaging the rack.
+
 ## [2.6.0] - 2026-04-09
 Integrated package updates, enhancing the docking controller with timeout and target marker capabilities, improving the mission controller's zone tracking and launch completion handling, and refining ArUco marker detection. Removed the redundant pose subscriber.
 
