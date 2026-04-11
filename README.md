@@ -111,8 +111,11 @@ ros2 launch auto_explore global_bringup.py \
   enable_rviz:=true \
   enable_markers:=true \
   enable_docking:=true \
-  enable_shooter:=true
+  enable_shooter:=true \
+  shooter_enable_hardware:=true
 ```
+
+**Important:** copy the command exactly as plain text into bash. Do **not** include Markdown link syntax like `[global_bringup.py](...)`, which causes shell parsing errors.
 
 ### Launch Components
 
@@ -138,6 +141,10 @@ enable_docking:=true|false     # Enable docking controller
 enable_shooter:=true|false     # Enable shooter controller
 shooter_enable_hardware:=false|true # GPIO actuation (physical robot only)
 ```
+
+Recommended values:
+- Gazebo/simulation: `shooter_enable_hardware:=false`
+- Real robot hardware: `shooter_enable_hardware:=true`
 
 ### Architecture
 
