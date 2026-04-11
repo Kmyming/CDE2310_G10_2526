@@ -7,6 +7,8 @@ from rclpy.node import Node
 from tf2_msgs.msg import TFMessage
 import RPi.GPIO as GPIO
 import time
+import Pinion_Rotation
+
 
 
 class ArucoTFListener(Node):
@@ -81,6 +83,7 @@ class ArucoTFListener(Node):
                 self.static_delivery(tf_data)
 
             elif marker_id == "10":
+                self.status = "Engaged"
                 self.dynamic_delivery(tf_data)
 
             elif marker_id == "21":
@@ -117,7 +120,7 @@ class ArucoTFListener(Node):
         # -------- First Delivery --------
         now = time.time()
         self.shoot()
-        while time.time() - now < 1:
+        while time.time() - now < delivery2_delay:
             pass
 
         # -------- Second Delivery --------
