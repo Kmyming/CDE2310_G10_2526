@@ -10,15 +10,36 @@ import time
 # ---------------------------------------------------------
 # USER PARAMETERS
 # ---------------------------------------------------------
-HOLD_DURATION   = 7     # seconds
-CYCLE_PAUSE     = 5     # seconds
+HOLD_DURATION   = 1     # seconds
+CYCLE_PAUSE     = 1    # seconds
+
+# Engagement profile: mild | medium | strong
+# Slower engage improves tooth catch. Disengage remains unchanged.
+ENGAGE_PROFILE = "medium"
 
 # --- Servo Configuration ---
 SERVO_PIN    = 13         # GPIO13
 # pigpio uses microseconds (us) directly for set_servo_pulsewidth
 # 1500us is the neutral position for most servos
 STOP_US      = 1500       
-FORWARD_US   = 1000       # 1000us = Full speed clockwise
+DISENGAGE_US = 1000       # Keep disengagement speed as current baseline
+
+# Baseline timings from current validated behavior
+ENGAGE_TIME_BASE_S = 0.47
+DISENGAGE_TIME_S = 0.28
+
+# Mild/medium/strong engage presets
+ENGAGE_PRESETS = {
+    "mild":   {"engage_us": 1000, "engage_time_s": 0.47},
+    "medium": {"engage_us": 1200, "engage_time_s": 0.795},
+    "strong": {"engage_us": 1300, "engage_time_s": 1.18},
+}
+
+# Per-cycle engage trim to reduce over-rotation on later cycles.
+# cycle 1 uses no trim; cycle 2 subtracts one trim step, etc.
+ENGAGE_TRIM_PER_EXTRA_CYCLE_S = 0.065
+ENGAGE_TRIM_PER_EXTRA_CYCLE_S_2 = 0.075
+ENGAGE_MIN_TIME_S = 0.25
 
 # --- Fixed rotation angles ---
 PHASE1_DEGREES = 170      
@@ -34,32 +55,56 @@ if not pi.connected:
 # Initialize in STOP state
 pi.set_servo_pulsewidth(SERVO_PIN, STOP_US)
 time.sleep(0.5)
+print("PIGPIO connection established. Starting in STOP state.")
+
+
+def get_engage_settings(profile_name):
+    profile = str(profile_name).strip().lower()
+    if profile not in ENGAGE_PRESETS:
+        valid = ", ".join(sorted(ENGAGE_PRESETS.keys()))
+        raise ValueError(f"Invalid ENGAGE_PROFILE '{profile_name}'. Choose one of: {valid}")
+    return ENGAGE_PRESETS[profile]
+
+
+ENGAGE_SETTINGS = get_engage_settings(ENGAGE_PROFILE)
+ENGAGE_US = ENGAGE_SETTINGS["engage_us"]
+ENGAGE_TIME_S = ENGAGE_SETTINGS["engage_time_s"]
 
 # --- Motor Control Functions ---
 
-def forward():
+def forward(pulse_us):
     """Rotate clockwise at full speed."""
-    pi.set_servo_pulsewidth(SERVO_PIN, FORWARD_US)
+    pi.set_servo_pulsewidth(SERVO_PIN, pulse_us)
 
 def stop_motor():
     """Stop the servo using hardware-timed neutral pulse."""
     pi.set_servo_pulsewidth(SERVO_PIN, STOP_US)
 
-def rotate_degrees(degrees, label=""):
+def get_engage_time_for_cycle(cycle_index):
+    cycle_index = max(0, int(cycle_index))
+    if cycle_index <= 3:
+        trimmed = ENGAGE_TIME_S - ENGAGE_TRIM_PER_EXTRA_CYCLE_S
+    else:
+        trimmed = ENGAGE_TIME_S - ENGAGE_TRIM_PER_EXTRA_CYCLE_S_2
+    return max(ENGAGE_MIN_TIME_S, trimmed)
+
+
+def rotate_degrees(degrees, label="", engage_time_s=None):
     """
-    Rotate servo using your measured timings.
-    Phase 1 (Engage): 0.581s
-    Phase 3 (Disengage): 0.42s
+    Rotate servo using calibrated phase timings.
+    Engage timing comes from selected profile.
+    Disengage timing remains fixed at DISENGAGE_TIME_S.
     """
     print(f"  Rotating {degrees}° ({label})")
-    forward()
-    
     if label == "disengaging rack":
-        time.sleep(0.35)
+        forward(DISENGAGE_US)
+        time.sleep(DISENGAGE_TIME_S)
     else:
-        # Phase 1: 170 degrees (engaging rack)
-        time.sleep(0.44)
-        
+        if engage_time_s is None:
+            engage_time_s = ENGAGE_TIME_S
+        forward(ENGAGE_US)
+        time.sleep(engage_time_s)
+    
     stop_motor()
 
 def cleanup():
@@ -72,10 +117,15 @@ def cleanup():
 
 # --- Single Cycle ---
 
-def run_cycle():
+def run_cycle(cycle_index=0):
+    effective_engage_time = get_engage_time_for_cycle(cycle_index)
+
     # --- Phase 1: Engage rack ---
-    print(f"[Phase 1] Rotating 170° CW — teeth engaging rack")
-    rotate_degrees(PHASE1_DEGREES, label="engaging rack")
+    print(
+        f"[Phase 1] Rotating 170° CW — teeth engaging rack "
+        f"(engage_time={effective_engage_time:.3f}s, cycle={cycle_index + 1})"
+    )
+    rotate_degrees(PHASE1_DEGREES, label="engaging rack", engage_time_s=effective_engage_time)
 
     # --- Phase 2: Hold position (Jitter-free hardware PWM) ---
     print(f"[Phase 2] Holding position for {HOLD_DURATION}s")
@@ -93,10 +143,15 @@ def run_cycle():
 
 if __name__ == "__main__":
     print("=== MG90S Rack & Pinion Controller (PIGPIO) ===")
+    print(
+        f"Profile={ENGAGE_PROFILE} | "
+        f"ENGAGE_US={ENGAGE_US}, ENGAGE_TIME_S={ENGAGE_TIME_S} | "
+        f"DISENGAGE_US={DISENGAGE_US}, DISENGAGE_TIME_S={DISENGAGE_TIME_S} | "
+        f"ENGAGE_TRIM_PER_EXTRA_CYCLE_S={ENGAGE_TRIM_PER_EXTRA_CYCLE_S}"
+    )
     
-    # Run two cycles as per your original main logic
-    run_cycle()
-    run_cycle()
+    for i in range(6):
+        run_cycle(i)
 
     stop_motor()
     cleanup()
