@@ -1,3 +1,10 @@
+## [1.2.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/38) - 2026-04-11
+
+Introduced a new hardware control script for the shooter's rack and pinion mechanism, enabling precise servo-driven engagement and disengagement.
+
+### Added / Changed
+- feat(shooter): Implemented `Shooter/Pinion_Rotation.py` to control an MG90S continuous rotation servo for a rack and pinion system using `pigpio` on Raspberry Pi. This includes functions for forward rotation, stopping, timed degree rotation, and a full cycle of engaging, holding, and disengaging the rack.
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
