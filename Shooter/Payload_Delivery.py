@@ -5,6 +5,7 @@ from turtle import delay
 import rclpy
 from rclpy.node import Node
 from tf2_msgs.msg import TFMessage
+from std_msgs.msg import Bool
 import RPi.GPIO as GPIO
 import time
 import Pinion_Rotation as pinion
@@ -23,6 +24,9 @@ class ArucoTFListener(Node):
             self.cb if self.status == "Idle" else None,
             10
         )
+
+        # Publisher for /launch_done
+        self.launch_done_pub = self.create_publisher(Bool, '/launch_done', 10)
 
         # optional storage for latest transform of each marker
         self.transforms_by_marker = {}
@@ -128,13 +132,21 @@ class ArucoTFListener(Node):
         # -------- Third Delivery --------
         self.shoot()
 
-        
+        # Publish to /launch_done
+        msg = Bool()
+        msg.data = True
+        self.launch_done_pub.publish(msg)
 
     def dynamic_delivery(self, tf_data):
         while self.dynamic_counter < 3:
             if tf_data["tx"] < 0.5 and tf_data["tx"] > -0.5:
                 self.shoot()
                 self.dynamic_counter += 1
+
+        # Publish to /launch_done
+        msg = Bool()
+        msg.data = True
+        self.launch_done_pub.publish(msg)
 
 
 
@@ -150,6 +162,11 @@ class ArucoTFListener(Node):
             bonus_counter+=1
             while time.time() - now < delivery_delay:
                 pass
+
+        # Publish to /launch_done
+        msg = Bool()
+        msg.data = True
+        self.launch_done_pub.publish(msg)
 
 
 
