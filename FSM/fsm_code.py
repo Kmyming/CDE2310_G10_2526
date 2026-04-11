@@ -62,7 +62,7 @@ class FSMNode(Node):
 
                 # Skip if already visited
                 if self.visited_markers[zone]:
-                    return
+                    continue
 
                 self.current_zone = zone
                 return
@@ -120,19 +120,27 @@ class FSMNode(Node):
         if msg.data and self.state == "EXPLORE":
             self.marker_detected = True
 
+    # ✅ UPDATED: Dock fail handling
     def dock_done_callback(self, msg: Bool):
-        if msg.data and self.state == "DOCK":
-            self.change_state("LAUNCH")
+        if self.state == "DOCK":
+
+            if msg.data:  # success
+                self.change_state("LAUNCH")
+
+            else:  # failure
+                self.get_logger().info("Dock failed → returning to EXPLORE")
+                self.current_zone = None  # reset so we re-detect marker
+                self.change_state("EXPLORE")
 
     def launch_done_callback(self, msg: Bool):
         if msg.data and self.state == "LAUNCH":
-            
-            # Mark zone as visited
+
+            # Mark zone as visited ONLY after successful launch
             if self.current_zone is not None:
                 self.visited_markers[self.current_zone] = True
 
             self.marker_count += 1
-            self.current_zone = None  # reset
+            self.current_zone = None
             self.change_state("EXPLORE")
 
     def map_explored_callback(self, msg: Bool):
