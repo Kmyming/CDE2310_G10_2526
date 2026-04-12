@@ -153,7 +153,8 @@ if __name__ == "__main__":
         f"ENGAGE_TRIM_PER_EXTRA_CYCLE_S={ENGAGE_TRIM_PER_EXTRA_CYCLE_S}"
     )
     
-    run_cycle(1)
+    for i in range(6):
+        run_cycle(i)
 
     stop_motor()
     cleanup()
