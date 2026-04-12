@@ -1,10 +1,13 @@
-## [2.7.0] - 2026-04-11
-Introduced a new hardware control script for the shooter's rack and pinion mechanism, enabling precise servo-driven engagement and disengagement.
+# Changelog
+## [2.8.0] - 2026-04-11
+Refined shooter mechanism parameters for enhanced performance and updated documentation for new launch configurations.
 
 ### Added / Changed
-- feat(shooter): Implemented `Shooter/Pinion_Rotation.py` to control an MG90S continuous rotation servo for a rack and pinion system using `pigpio` on Raspberry Pi. This includes functions for forward rotation, stopping, timed degree rotation, and a full cycle of engaging, holding, and disengaging the rack.
+- feat(shooter): Tuned shooter parameters in `Shooter/Pinion_Rotation.py` for drift calibration and continuous shooting, introducing configurable engagement profiles (mild, medium, strong), per-cycle engagement time trimming, and updated timing parameters (`HOLD_DURATION`, `CYCLE_PAUSE`, `ENGAGE_US`, `DISENGAGE_US`, `ENGAGE_TIME_S`, `DISENGAGE_TIME_S`, `ENGAGE_TRIM_PER_EXTRA_CYCLE_S`, `ENGAGE_TRIM_PER_EXTRA_CYCLE_S_2`, `ENGAGE_MIN_TIME_S`).
 
-# Changelog
+### Documentation
+- docs(README): Updated `README.md` to include the `shooter_enable_hardware` launch argument and clarified launch command usage.
+
 ## [2.7.0] - 2026-04-11
 
 Introduced a new hardware control script for the shooter's rack and pinion mechanism, enabling precise servo-driven engagement and disengagement.
