@@ -31,11 +31,18 @@ def generate_launch_description():
         default_value='true',
         description='Enable RViz visualization'
     )
+
+    slam_params_file_arg = DeclareLaunchArgument(
+        'slam_params_file',
+        default_value=os.path.join(auto_explore_share, 'config', 'mapper_params_online_async.yaml'),
+        description='Path to SLAM Toolbox parameter file'
+    )
     
     # Launch argument substitutions
     use_sim_time = LaunchConfiguration('use_sim_time')
     enable_slam = LaunchConfiguration('enable_slam')
     enable_rviz = LaunchConfiguration('enable_rviz')
+    slam_params_file = LaunchConfiguration('slam_params_file')
     
     # SLAM Toolbox node
     slam_toolbox_node = Node(
@@ -44,6 +51,7 @@ def generate_launch_description():
         name='slam_toolbox',
         output='screen',
         parameters=[
+            slam_params_file,
             {'use_sim_time': use_sim_time},
         ],
         condition=IfCondition(enable_slam)
@@ -66,6 +74,7 @@ def generate_launch_description():
         use_sim_time_arg,
         enable_slam_arg,
         enable_rviz_arg,
+        slam_params_file_arg,
         slam_toolbox_node,
         rviz_node,
     ])

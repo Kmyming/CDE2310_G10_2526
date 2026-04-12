@@ -6,26 +6,15 @@ from geometry_msgs.msg import Twist, PoseStamped
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Bool
 import numpy as np
-import heapq, math, random, yaml
+import heapq, math, random
 import scipy.interpolate as si
 import threading, time
-import os
-from ament_index_python.packages import get_package_share_directory
 
-config_path = os.path.join(
-    get_package_share_directory('auto_explore'),
-    'config',
-    'params.yaml'
-)
-
-with open(config_path, 'r', encoding='utf-8') as file:
-    params = yaml.load(file, Loader=yaml.FullLoader)
-
-lookahead_distance = params['lookahead_distance']
-speed = params['speed']
-expansion_size = params['expansion_size']
-target_error = params['target_error']
-robot_r = params['robot_r']
+lookahead_distance = 0.24
+speed = 0.09
+expansion_size = 3
+target_error = 0.15
+robot_r = 0.2
 
 pathGlobal = 0
 
@@ -373,6 +362,28 @@ def localControl(scan):
 class navigationControl(Node):
     def __init__(self):
         super().__init__('exploration_controller')
+
+        self.declare_parameter('lookahead_distance', 0.24)
+        self.declare_parameter('speed', 0.09)
+        self.declare_parameter('expansion_size', 3)
+        self.declare_parameter('target_error', 0.15)
+        self.declare_parameter('robot_r', 0.2)
+
+        global lookahead_distance, speed, expansion_size, target_error, robot_r
+        lookahead_distance = float(self.get_parameter('lookahead_distance').value)
+        speed = float(self.get_parameter('speed').value)
+        expansion_size = int(self.get_parameter('expansion_size').value)
+        target_error = float(self.get_parameter('target_error').value)
+        robot_r = float(self.get_parameter('robot_r').value)
+
+        self.get_logger().info(
+            'Navigation params loaded: '
+            f'lookahead_distance={lookahead_distance}, '
+            f'speed={speed}, '
+            f'expansion_size={expansion_size}, '
+            f'target_error={target_error}, '
+            f'robot_r={robot_r}'
+        )
 
         self.create_subscription(OccupancyGrid, 'map', self.map_callback, 10)
         self.create_subscription(Odometry, 'odom', self.odom_callback, 10)

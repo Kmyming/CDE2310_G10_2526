@@ -60,6 +60,30 @@ colcon build --packages-select auto_explore
 source install/setup.bash
 ```
 
+### Troubleshooting: Launch Changes Not Taking Effect
+
+If you edit launch/config files but runtime still shows old behavior, you are usually running stale files from `install/`.
+
+Use this sequence after edits to `remote_laptop_src/launch/*.py`, `remote_laptop_src/config/*.yaml`, or package Python modules:
+
+```bash
+cd ~/turtlebot3_ws
+source /opt/ros/humble/setup.bash
+colcon build --packages-select auto_explore
+source install/setup.bash
+ros2 launch auto_explore global_bringup.py --show-arguments
+```
+
+Quick validation checks:
+
+```bash
+ros2 pkg list | grep auto_explore
+ros2 pkg prefix auto_explore
+ros2 launch auto_explore global_bringup.py --show-arguments | grep slam_params_file
+```
+
+If `slam_params_file` or `nav_params_file` does not appear in `--show-arguments`, the installed launch files are not updated yet.
+
 ### Launch Sequences (Verified)
 
 #### Gazebo Simulation
@@ -83,7 +107,6 @@ ros2 launch auto_explore global_bringup.py \
   enable_fsm:=true \
   enable_navigation:=true \
   enable_markers:=true \
-  enable_marker_logger:=true \
   enable_docking:=false \
   enable_shooter:=false
 ```
@@ -125,7 +148,6 @@ This launches:
 - **FSM Controller** (mission state machine)
 - **Exploration Controller** (frontier-based autonomous navigation)
 - **ArUco Marker Detection** (pose publisher) - enabled with `enable_markers:=true`
-- **Marker Logger** (logging marker detections to `./logs/`)
 
 ### Launch Arguments
 
@@ -136,7 +158,6 @@ enable_rviz:=true|false        # Enable RViz visualization
 enable_fsm:=true|false         # Enable mission FSM
 enable_navigation:=true|false  # Enable frontier exploration controller
 enable_markers:=true|false     # Enable ArUco marker detection
-enable_marker_logger:=true|false # Enable ArUco logger
 enable_docking:=true|false     # Enable docking controller
 enable_shooter:=true|false     # Enable shooter controller
 shooter_enable_hardware:=false|true # GPIO actuation (physical robot only)
@@ -155,7 +176,6 @@ The `auto_explore` package contains:
 - **mission_controller.py** - FSM state machine orchestration
 - **exploration_controller.py** - Frontier-based autonomous exploration
 - **pose_publisher.py** - ArUco marker detection
-- **pose_subscriber.py** - Marker logging with rolling buffer
 - **config/params.yaml** - Local exploration tuning parameters
 
 ### Subsystem Test Instructions
@@ -170,7 +190,7 @@ ros2 launch auto_explore global_bringup.py --show-args
 ros2 pkg executables auto_explore
 ```
 
-Expected: package is discoverable, all launch args listed, and executables include `mission_controller`, `exploration_controller`, `pose_publisher`, `pose_subscriber`, `docking_controller`, `shooter_controller`.
+Expected: package is discoverable, all launch args listed, and executables include `mission_controller`, `exploration_controller`, `pose_publisher`, `docking_controller`, `shooter_controller`.
 
 #### 2) Navigation Infrastructure (SLAM/RViz)
 
@@ -191,7 +211,7 @@ Expected: `/map` is available and updating.
 ```bash
 ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
   enable_fsm:=true enable_navigation:=false enable_markers:=false \
-  enable_marker_logger:=false enable_docking:=false enable_shooter:=false
+  enable_docking:=false enable_shooter:=false
 ```
 
 Check:
@@ -207,7 +227,7 @@ Expected: FSM publishes `EXPLORE` on startup.
 ```bash
 ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
   enable_fsm:=false enable_navigation:=true enable_markers:=false \
-  enable_marker_logger:=false enable_docking:=false enable_shooter:=false
+  enable_docking:=false enable_shooter:=false
 ```
 
 Check:
@@ -219,12 +239,12 @@ ros2 topic echo /map_explored
 
 Expected: `/cmd_vel` publishes while navigating; `/map_explored` eventually becomes true.
 
-#### 5) Marker Detection + Logger
+#### 5) Marker Detection
 
 ```bash
 ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
   enable_fsm:=false enable_navigation:=false enable_markers:=true \
-  enable_marker_logger:=true enable_docking:=false enable_shooter:=false
+  enable_docking:=false enable_shooter:=false
 ```
 
 Check:
@@ -240,7 +260,7 @@ Expected: heartbeat JSON plus marker JSON when marker is in view.
 ```bash
 ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
   enable_fsm:=false enable_navigation:=false enable_markers:=false \
-  enable_marker_logger:=false enable_docking:=true enable_shooter:=false
+  enable_docking:=true enable_shooter:=false
 ```
 
 Check:
@@ -259,7 +279,7 @@ Simulation-safe launch:
 ```bash
 ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
   enable_fsm:=false enable_navigation:=false enable_markers:=false \
-  enable_marker_logger:=false enable_docking:=false enable_shooter:=true \
+  enable_docking:=false enable_shooter:=true \
   shooter_enable_hardware:=false
 ```
 
@@ -271,7 +291,7 @@ Expected: shooter node starts without GPIO access errors.
 ros2 launch auto_explore global_bringup.py \
   use_sim_time:=true enable_slam:=true enable_rviz:=false \
   enable_fsm:=true enable_navigation:=true enable_markers:=true \
-  enable_marker_logger:=true enable_docking:=false enable_shooter:=false
+  enable_docking:=false enable_shooter:=false
 ```
 
 Checks:
