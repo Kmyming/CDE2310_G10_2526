@@ -1,3 +1,7 @@
+## [2.5.0] - 2026-04-12
+### Added / Changed
+- feat(rviz): Updated and optimized the RViz configuration file (`tb3_cartographer.rviz`) to include comprehensive displays for exploration path, SLAM, navigation costmaps and paths, sensor data, and the TF tree.
+
 ## [2.4.0](https://github.com/Kmyming/CDE2310_G10_2526/pull/28) - 2026-04-08
 Implemented a command velocity multiplexer within the FSM to dynamically switch between navigation and docking commands, and introduced a "static" zone publisher for docking and launch states.
 
