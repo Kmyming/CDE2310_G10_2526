@@ -25,20 +25,20 @@ STOP_US      = 1500
 DISENGAGE_US = 1000       # Keep disengagement speed as current baseline
 
 # Baseline timings from current validated behavior
-ENGAGE_TIME_BASE_S = 0.47
-DISENGAGE_TIME_S = 0.28
+ENGAGE_TIME_BASE_S = 0.40
+DISENGAGE_TIME_S = 0.24
 
 # Mild/medium/strong engage presets
 ENGAGE_PRESETS = {
-    "mild":   {"engage_us": 1000, "engage_time_s": 0.47},
-    "medium": {"engage_us": 1200, "engage_time_s": 0.795},
-    "strong": {"engage_us": 1300, "engage_time_s": 1.18},
+    "mild":   {"engage_us": 1000, "engage_time_s": 0.40},
+    "medium": {"engage_us": 1200, "engage_time_s": 0.68},
+    "strong": {"engage_us": 1300, "engage_time_s": 1.01},
 }
 
 # Per-cycle engage trim to reduce over-rotation on later cycles.
 # cycle 1 uses no trim; cycle 2 subtracts one trim step, etc.
-ENGAGE_TRIM_PER_EXTRA_CYCLE_S = 0.065
-ENGAGE_TRIM_PER_EXTRA_CYCLE_S_2 = 0.075
+ENGAGE_TRIM_PER_EXTRA_CYCLE_S = 0.056
+ENGAGE_TRIM_PER_EXTRA_CYCLE_S_2 = 0.064
 ENGAGE_MIN_TIME_S = 0.25
 
 # --- Fixed rotation angles ---
@@ -56,6 +56,7 @@ if not pi.connected:
 pi.set_servo_pulsewidth(SERVO_PIN, STOP_US)
 time.sleep(0.5)
 print("PIGPIO connection established. Starting in STOP state.")
+_shutdown_done = False
 
 
 def get_engage_settings(profile_name):
@@ -107,40 +108,50 @@ def rotate_degrees(degrees, label="", engage_time_s=None):
     
     stop_motor()
 
-def cleanup():
-    """Stops PWM signal entirely and closes connection."""
+def engage_rack(cycle_index=0):
+    """Phase 1: engage teeth and pull rack back."""
+    effective_engage_time = get_engage_time_for_cycle(cycle_index)
+    print(
+        f"[Pinion] Engage rack (engage_time={effective_engage_time:.3f}s, cycle={cycle_index + 1})"
+    )
+    rotate_degrees(PHASE1_DEGREES, label="engaging rack", engage_time_s=effective_engage_time)
+    return effective_engage_time
+
+
+def disengage_rack(cycle_index=0):
+    """Phase 3: disengage teeth and release rack for launch."""
+    print(f"[Pinion] Disengage rack (cycle={cycle_index + 1})")
+    rotate_degrees(PHASE3_DEGREES, label="disengaging rack")
+
+
+def shutdown():
+    """Stops PWM signal and closes pigpio once at program end."""
+    global _shutdown_done
+    if _shutdown_done:
+        return
+    _shutdown_done = True
     stop_motor()
-    time.sleep(0.3)
-    pi.set_servo_pulsewidth(SERVO_PIN, 0) # Kill signal for safety
+    time.sleep(0.1)
+    pi.set_servo_pulsewidth(SERVO_PIN, 0)
     pi.stop()
     print("PIGPIO connection closed.")
 
 # --- Single Cycle ---
 
 def run_cycle(cycle_index=0):
-    effective_engage_time = get_engage_time_for_cycle(cycle_index)
-
-    # --- Phase 1: Engage rack ---
-    print(
-        f"[Phase 1] Rotating 180° CW — teeth engaging rack "
-        f"(engage_time={effective_engage_time:.3f}s, cycle={cycle_index + 1})"
-    )
-    rotate_degrees(PHASE1_DEGREES, label="engaging rack", engage_time_s=effective_engage_time)
+    engage_rack(cycle_index)
 
     # --- Phase 2: Hold position (Jitter-free hardware PWM) ---
     print(f"[Phase 2] Holding position for {HOLD_DURATION}s")
     time.sleep(HOLD_DURATION)
 
     # --- Phase 3: Disengage rack ---
-    print(f"[Phase 3] Rotating back to normal position — teeth disengaging rack")
-    rotate_degrees(PHASE3_DEGREES, label="disengaging rack")
+    disengage_rack(cycle_index)
 
     # --- Phase 4: Pause ---
     print(f"[Phase 4] Cycle complete. Waiting {CYCLE_PAUSE}s")
     time.sleep(CYCLE_PAUSE)
-    
     stop_motor()
-    cleanup()
 
 # --- Main ---
 
@@ -152,9 +163,6 @@ if __name__ == "__main__":
         f"DISENGAGE_US={DISENGAGE_US}, DISENGAGE_TIME_S={DISENGAGE_TIME_S} | "
         f"ENGAGE_TRIM_PER_EXTRA_CYCLE_S={ENGAGE_TRIM_PER_EXTRA_CYCLE_S}"
     )
-    
-    for i in range(6):
-        run_cycle(i)
 
-    stop_motor()
-    cleanup()
+    run_cycle(0)
+    shutdown()
