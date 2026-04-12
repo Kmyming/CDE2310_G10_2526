@@ -1,3 +1,9 @@
+## [2.8.1] - 2026-04-12
+Integrated the docking node with the robot's Finite State Machine (FSM) to enable state-driven docking initiation.
+
+### Fixed
+- fix(docking): Integrated `Aruco_Docker_Final.py` with the FSM by subscribing to the `/states` topic, allowing the docking node to transition from `IDLE` to `SEARCH` when the FSM commands `DOCK`.
+
 ## [2.8.0] - 2026-04-11
 Refined shooter mechanism parameters for enhanced performance and updated documentation for new launch configurations.
 
