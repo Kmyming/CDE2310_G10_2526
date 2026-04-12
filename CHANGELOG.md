@@ -1,3 +1,9 @@
+## [2.9.3] - 2026-04-12
+Refactored the shooter node's architecture to use `pigpio` for gate control, improved the shooting sequence, and ensured proper GPIO cleanup.
+
+### Fixed
+- fix(shooter): Architecturally refactored the shooter node (`Payload_Delivery.py`) to use `pigpio` for SG90 gate servo control, enabling parallel rack engagement and gate operation via threading, and corrected the shooting sequence logic. This included proper resource cleanup in `destroy_node()` and refined pinion timing parameters in `Pinion_Rotation.py`.
+
 ## [2.9.2] - 2026-04-12
 Refactored parameter loading for navigation and SLAM to use ROS 2 parameter server mechanisms, and removed the redundant marker logger.
 
