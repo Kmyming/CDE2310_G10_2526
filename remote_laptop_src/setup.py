@@ -28,7 +28,6 @@ setup(
             'mission_controller = auto_explore.mission_controller:main',
             'exploration_controller = auto_explore.exploration_controller:main',
             'pose_publisher = auto_explore.pose_publisher:main',
-            'pose_subscriber = auto_explore.pose_subscriber:main',
             'docking_controller = auto_explore.docking_controller:main',
             'shooter_controller = auto_explore.shooter_controller:main'
         ],
