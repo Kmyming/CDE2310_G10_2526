@@ -1,4 +1,12 @@
 # Changelog
+## [2.9.2] - 2026-04-12
+Refined docking activation logic so the docking controller only engages when the FSM is in the docking state, preventing unintended docking behaviour during other mission phases.
+
+### Fixed
+- fix(docking): Updated `docking_controller.py` to subscribe to the `/states` topic and track the robot's overall FSM state before initiating docking.
+- fix(docking): Modified the docking controller to remain in `IDLE` by default and only transition to `SEARCH` when the FSM publishes `"DOCK"` on `/states`, ensuring docking logic is gated by the main robot state machine.
+- fix(docking): Prevented the docking state machine from starting automatically whenever marker data is available, reducing unintended activation outside the intended docking phase.
+
 ## [2.9.1] - 2026-04-12
 Refactored parameter loading for navigation and SLAM to use ROS 2 parameter server mechanisms, and removed the redundant marker logger.
 
