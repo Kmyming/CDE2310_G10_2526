@@ -37,7 +37,15 @@ class ArucoTFListener(Node):
         self.gate_open_us = 500
         self.gate_close_us = 1500
         self.gate_settle_s = 0.25
+
+        # Overlap timing controls between MG90 engage and SG90 gate open.
+        # 0.0  -> start together
+        # >0.0 -> SG90 gate open starts after MG90 engage begins
+        # <0.0 -> SG90 gate open starts before MG90 engage begins
+        self.engage_to_gate_open_offset_s = 0.0
         self.ball_drop_s = 0.25
+
+        # Delay from SG90 close completion to MG90 disengage/release.
         self.close_to_release_s = 0.08
 
         self.gate_pi = pigpio.pi()
@@ -198,11 +206,19 @@ class ArucoTFListener(Node):
         cycle_index = self.global_shot_count
         self.get_logger().info(f"Starting shot cycle {cycle_index + 1}")
 
-        # Start rack pullback and gate opening in parallel.
+        # Start rack pullback and gate open with configurable overlap offset.
         engage_thread = threading.Thread(target=pinion.engage_rack, args=(cycle_index,))
-        engage_thread.start()
+        offset = self.engage_to_gate_open_offset_s
+        if offset >= 0.0:
+            engage_thread.start()
+            if offset > 0.0:
+                time.sleep(offset)
+            self.open_gate()
+        else:
+            self.open_gate()
+            time.sleep(abs(offset))
+            engage_thread.start()
 
-        self.open_gate()
         engage_thread.join()
 
         # Gate stays open briefly to allow ball drop into launcher.
