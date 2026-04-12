@@ -1,3 +1,14 @@
+## [2.8.1] - 2026-04-12
+Refactored parameter loading for navigation and SLAM to use ROS 2 parameter server mechanisms, and removed the redundant marker logger.
+
+### Fixed
+- fix(navigation): Updated `exploration_controller` to load navigation tuning parameters directly from the ROS 2 parameter server, replacing direct YAML file parsing.
+- fix(slam): Integrated SLAM Toolbox parameters via a new dedicated configuration file (`mapper_params_online_async.yaml`) and exposed it as a launch argument (`slam_params_file`).
+- fix(logging): Removed the `pose_subscriber` node, its associated launch arguments, and entry points, as it provided redundant marker logging functionality.
+
+### Documentation
+- docs(README): Updated `README.md` to reflect the removal of the marker logger, its launch argument, and added a new troubleshooting section for launch file changes.
+
 ## [2.8.0] - 2026-04-11
 Refined shooter mechanism parameters for enhanced performance and updated documentation for new launch configurations.
 
