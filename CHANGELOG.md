@@ -1,3 +1,16 @@
+## [2.9.0] - 2026-04-12
+Integrated servo-driven pinion for payload delivery, enhanced FSM communication with launch completion signals, and refined shooting timings.
+
+### Added / Changed
+- feat(shooter): Integrated `Pinion_Rotation` module for servo-controlled rack and pinion payload delivery, replacing direct GPIO rack control in `Shooter/Payload_Delivery.py`.
+- feat(fsm): Implemented publishing to `/launch_done` topic from `Shooter/Payload_Delivery.py` after static, dynamic, or bonus deliveries.
+- feat(shooter): Adjusted `PHASE1_DEGREES` to `180` in `Shooter/Pinion_Rotation.py` for improved rack engagement.
+
+### Fixed
+- fix(shooter): Updated GPIO pin for gate control from `17` to `12` in `Shooter/Payload_Delivery.py`.
+- fix(shooter): Tuned shooting timings, including `delivery2_delay` and servo angle hold duration in `Shooter/Payload_Delivery.py`.
+- fix(shooter): Ensured proper motor stop and cleanup after `run_cycle` in `Shooter/Pinion_Rotation.py`.
+
 # Changelog
 ## [2.8.0] - 2026-04-11
 Refined shooter mechanism parameters for enhanced performance and updated documentation for new launch configurations.
