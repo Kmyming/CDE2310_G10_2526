@@ -42,7 +42,7 @@ ENGAGE_TRIM_PER_EXTRA_CYCLE_S_2 = 0.075
 ENGAGE_MIN_TIME_S = 0.25
 
 # --- Fixed rotation angles ---
-PHASE1_DEGREES = 170      
+PHASE1_DEGREES = 180      
 PHASE3_DEGREES = 360      
 
 # --- GPIO Setup ---
@@ -122,7 +122,7 @@ def run_cycle(cycle_index=0):
 
     # --- Phase 1: Engage rack ---
     print(
-        f"[Phase 1] Rotating 170° CW — teeth engaging rack "
+        f"[Phase 1] Rotating 180° CW — teeth engaging rack "
         f"(engage_time={effective_engage_time:.3f}s, cycle={cycle_index + 1})"
     )
     rotate_degrees(PHASE1_DEGREES, label="engaging rack", engage_time_s=effective_engage_time)
@@ -138,6 +138,9 @@ def run_cycle(cycle_index=0):
     # --- Phase 4: Pause ---
     print(f"[Phase 4] Cycle complete. Waiting {CYCLE_PAUSE}s")
     time.sleep(CYCLE_PAUSE)
+    
+    stop_motor()
+    cleanup()
 
 # --- Main ---
 
