@@ -10,11 +10,19 @@ import heapq, math, random
 import scipy.interpolate as si
 import threading, time
 
-lookahead_distance = 0.24
-speed = 0.09
-expansion_size = 3
-target_error = 0.15
-robot_r = 0.2
+# Fallback defaults. These are overwritten at runtime from ROS parameters
+# when the node starts (typically injected from config/params.yaml via launch).
+DEFAULT_LOOKAHEAD_DISTANCE = 0.24
+DEFAULT_SPEED = 0.09
+DEFAULT_EXPANSION_SIZE = 3
+DEFAULT_TARGET_ERROR = 0.15
+DEFAULT_ROBOT_R = 0.2
+
+lookahead_distance = DEFAULT_LOOKAHEAD_DISTANCE
+speed = DEFAULT_SPEED
+expansion_size = DEFAULT_EXPANSION_SIZE
+target_error = DEFAULT_TARGET_ERROR
+robot_r = DEFAULT_ROBOT_R
 
 pathGlobal = 0
 
@@ -363,11 +371,11 @@ class navigationControl(Node):
     def __init__(self):
         super().__init__('exploration_controller')
 
-        self.declare_parameter('lookahead_distance', 0.24)
-        self.declare_parameter('speed', 0.09)
-        self.declare_parameter('expansion_size', 3)
-        self.declare_parameter('target_error', 0.15)
-        self.declare_parameter('robot_r', 0.2)
+        self.declare_parameter('lookahead_distance', DEFAULT_LOOKAHEAD_DISTANCE)
+        self.declare_parameter('speed', DEFAULT_SPEED)
+        self.declare_parameter('expansion_size', DEFAULT_EXPANSION_SIZE)
+        self.declare_parameter('target_error', DEFAULT_TARGET_ERROR)
+        self.declare_parameter('robot_r', DEFAULT_ROBOT_R)
 
         global lookahead_distance, speed, expansion_size, target_error, robot_r
         lookahead_distance = float(self.get_parameter('lookahead_distance').value)

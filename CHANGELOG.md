@@ -1,3 +1,20 @@
+## [2.9.3] - 2026-04-12
+Refactored the shooter node's architecture to use `pigpio` for gate control, improved the shooting sequence, and ensured proper GPIO cleanup.
+
+### Fixed
+- fix(shooter): Architecturally refactored the shooter node (`Payload_Delivery.py`) to use `pigpio` for SG90 gate servo control, enabling parallel rack engagement and gate operation via threading, and corrected the shooting sequence logic. This included proper resource cleanup in `destroy_node()` and refined pinion timing parameters in `Pinion_Rotation.py`.
+
+## [2.9.2] - 2026-04-12
+Refactored parameter loading for navigation and SLAM to use ROS 2 parameter server mechanisms, and removed the redundant marker logger.
+
+### Fixed
+- fix(navigation): Migrated `exploration_controller` to retrieve navigation tuning parameters from the ROS 2 parameter server, deprecating the previous direct YAML file access.
+- fix(slam): Implemented dynamic loading of SLAM Toolbox parameters through a new `slam_params_file` launch argument, referencing `mapper_params_online_async.yaml`.
+- fix(logging): Discontinued the `pose_subscriber` node, along with its launch arguments and console entry points, due to its redundant marker logging functionality.
+
+### Documentation
+- docs(README): Revised `README.md` to document the removal of the marker logger and include a new section for troubleshooting launch file updates.
+
 # Changelog
 ## [2.9.2] - 2026-04-12
 Refined docking activation logic so the docking controller only engages when the FSM is in the docking state, preventing unintended docking behaviour during other mission phases.
