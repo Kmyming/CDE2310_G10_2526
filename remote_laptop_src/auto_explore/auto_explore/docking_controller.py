@@ -22,6 +22,7 @@ class DockingController(Node):
         self.status_pub = self.create_publisher(Bool, '/dock_done', 10)
         self.tf_sub = self.create_subscription(TFMessage, '/tf', self.tf_callback, 10)
         self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
+        self.cmd_state = self.create_subscription(String, '/states', self.state_callback, 10)
         self.subscription = self.create_subscription(
             LaserScan,
             'scan',
@@ -33,7 +34,7 @@ class DockingController(Node):
         self.marker_visible = False
         self.last_seen_time = self.get_clock().now()
         self.timeout_sec = 2
-
+        
         self.latest_tx = None
         self.latest_tz = None
         self.latest_rx = None
@@ -41,6 +42,8 @@ class DockingController(Node):
         self.latest_rz = None
         self.latest_rw = None
 
+        #Bot state from FSM
+        self.bot_state = "EXPLORE"
         # Current odom pose
         self.curr_x = 0.0
         self.curr_y = 0.0
@@ -62,7 +65,7 @@ class DockingController(Node):
         self.tx_final_align_tolerance = 0.05
 
         # State machine
-        self.state = "SEARCH"
+        self.state = "IDLE"
 
         # Stored motion targets
         self.turn_target_yaw = 0.0
@@ -99,6 +102,10 @@ class DockingController(Node):
                 self.latest_rz = transform.transform.rotation.z
                 self.latest_rw = transform.transform.rotation.w
                 return
+
+    def state_callback(self, msg):
+        self.bot_state = msg.data
+
 
     def scan_callback(self,msg):
         self.scan_data = msg
@@ -358,6 +365,9 @@ class DockingController(Node):
                 self.get_logger().info("SEARCH -> APPROACH_1")
                 self.state = "APPROACH_1"
 
+        if self.state == "IDLE":
+            if self.latest_tz is not None and self.bot_state == "DOCK":
+                self.state = "SEARCH"
         # -------------------------
         # DRIVE FORWARD UNTIL tz < mid_tz_threshold
         # -------------------------
@@ -550,7 +560,6 @@ class DockingController(Node):
     def destroy_node(self):
         self.cmd_pub.publish(Twist())
         super().destroy_node()
-
 
 def main(args=None):
     rclpy.init(args=args)
