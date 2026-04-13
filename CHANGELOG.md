@@ -1,3 +1,12 @@
+## [2.9.5] - 2026-04-13
+Tuned various shooter parameters and refined timing logic for improved static payload delivery.
+
+### Fixed
+- fix(shooter): Adjusted `gate_close_us`, `gate_settle_s`, `engage_to_gate_open_offset_s`, `ball_drop_s`, `close_to_release_s`, `rack_hold_duration_s`, and `rack_cycle_pause_s` in `shooter_controller.py`.
+- fix(shooter): Renamed `engage_trim_per_extra_cycle_s` and `engage_trim_per_extra_cycle_high_s` to `disengage_trim_per_extra_cycle_s` and `disengage_trim_per_extra_cycle_high_s` respectively, updating their values.
+- fix(shooter): Updated `engage_us` and `engage_time_s` for the 'medium' engage profile, and refined the `_get_disengage_pause_for_cycle` logic for cycle-dependent disengage pauses.
+- fix(shooter): Modified the `_shoot_once_hardware` function to ensure `engage_thread.join()` timing is independent of gate timing.
+
 ## [2.9.4] - 2026-04-13
 Integrated shooter testbed into auto_explore package. Updated the auto_explore shooter subsystem to support real-hardware operation via pigpio (remote pigpiod) and adds launch/documentation wiring for the new shooter configuration options.
 
