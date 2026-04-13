@@ -37,8 +37,6 @@ class FSMNode(Node):
         # Subscribers (state triggers)
         self.create_subscription(Bool, '/dock_done', self.dock_done_callback, 10)
         self.create_subscription(Bool, '/shoot_done', self.shoot_done_callback, 10)
-        # Backward-compatible trigger for legacy launcher nodes.
-        self.create_subscription(Bool, '/launch_done', self.launch_done_callback, 10)
         self.create_subscription(Bool, '/map_explored', self.map_explored_callback, 10)
         self.create_subscription(Bool, '/marker_detected', self.aruco_callback, 10)
         self.create_subscription(TFMessage, '/tf', self.tf_callback, 10)
@@ -154,17 +152,14 @@ class FSMNode(Node):
         self.change_state('EXPLORE')
 
     def shoot_done_callback(self, msg: Bool):
-        self._handle_launch_completion(msg, source='shoot_done')
+        self._handle_launch_completion(msg)
 
-    def launch_done_callback(self, msg: Bool):
-        self._handle_launch_completion(msg, source='launch_done')
-
-    def _handle_launch_completion(self, msg: Bool, source: str):
+    def _handle_launch_completion(self, msg: Bool):
         if self.state != 'LAUNCH' or not msg.data:
             return
 
         if self.launch_completion_consumed:
-            self.get_logger().warn(f'[FSM] Ignoring duplicate launch completion from {source}')
+            self.get_logger().warn('[FSM] Ignoring duplicate launch completion')
             return
 
         self.launch_completion_consumed = True
