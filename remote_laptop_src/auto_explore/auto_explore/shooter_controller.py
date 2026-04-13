@@ -25,16 +25,16 @@ class ShooterController(Node):
         self.declare_parameter('ultrasonic_distance_threshold_m', 0.70)
         self.declare_parameter('ultrasonic_simulated_distance_m', 0.15)
         self.declare_parameter('gate_open_us', 500)
-        self.declare_parameter('gate_close_us', 1500)
-        self.declare_parameter('gate_settle_s', 0.25)
-        self.declare_parameter('engage_to_gate_open_offset_s', 0.0)
-        self.declare_parameter('ball_drop_s', 0.25)
-        self.declare_parameter('close_to_release_s', 0.08)
+        self.declare_parameter('gate_close_us', 1000)
+        self.declare_parameter('gate_settle_s', 0.2)
+        self.declare_parameter('engage_to_gate_open_offset_s', 0.35)
+        self.declare_parameter('ball_drop_s', 0.2)
+        self.declare_parameter('close_to_release_s', 0.03125)
         self.declare_parameter('engage_profile', 'medium')
-        self.declare_parameter('engage_trim_per_extra_cycle_s', 0.056)
-        self.declare_parameter('engage_trim_per_extra_cycle_high_s', 0.064)
-        self.declare_parameter('rack_hold_duration_s', 1.0)
-        self.declare_parameter('rack_cycle_pause_s', 1.0)
+        self.declare_parameter('disengage_trim_per_extra_cycle_s', 0.075)
+        self.declare_parameter('disengage_trim_per_extra_cycle_high_s', 0.1)
+        self.declare_parameter('rack_hold_duration_s', 0.75)
+        self.declare_parameter('rack_cycle_pause_s', 0.35)
         self.declare_parameter('dynamic_poll_interval_s', 0.05)
         self.declare_parameter('ultrasonic_echo_timeout_s', 0.03)
         self.declare_parameter('ultrasonic_poll_sleep_s', 0.0005)
@@ -56,8 +56,8 @@ class ShooterController(Node):
         self.ball_drop_s = float(self.get_parameter('ball_drop_s').value)
         self.close_to_release_s = float(self.get_parameter('close_to_release_s').value)
         self.engage_profile = str(self.get_parameter('engage_profile').value).strip().lower()
-        self.engage_trim_per_extra_cycle_s = float(self.get_parameter('engage_trim_per_extra_cycle_s').value)
-        self.engage_trim_per_extra_cycle_high_s = float(self.get_parameter('engage_trim_per_extra_cycle_high_s').value)
+        self.disengage_trim_per_extra_cycle_s = float(self.get_parameter('disengage_trim_per_extra_cycle_s').value)
+        self.disengage_trim_per_extra_cycle_high_s = float(self.get_parameter('disengage_trim_per_extra_cycle_high_s').value)
         self.rack_hold_duration_s = float(self.get_parameter('rack_hold_duration_s').value)
         self.rack_cycle_pause_s = float(self.get_parameter('rack_cycle_pause_s').value)
         self.dynamic_poll_interval_s = float(self.get_parameter('dynamic_poll_interval_s').value)
@@ -66,7 +66,7 @@ class ShooterController(Node):
 
         self._engage_profiles = {
             'mild': {'engage_us': 1000, 'engage_time_s': 0.40},
-            'medium': {'engage_us': 1200, 'engage_time_s': 0.68},
+            'medium': {'engage_us': 1270, 'engage_time_s': 1.70},
             'strong': {'engage_us': 1300, 'engage_time_s': 1.01},
         }
         if self.engage_profile not in self._engage_profiles:
@@ -198,9 +198,10 @@ class ShooterController(Node):
             time.sleep(abs(offset))
             engage_thread.start()
 
-        engage_thread.join()
         time.sleep(self.ball_drop_s)
         self._close_gate()
+        # Keep gate timing independent from rack engage/hold duration.
+        engage_thread.join()
         time.sleep(self.close_to_release_s)
 
         self._disengage_rack(cycle_index)
@@ -208,13 +209,20 @@ class ShooterController(Node):
 
     def _get_engage_time_for_cycle(self, cycle_count: int) -> float:
         profile = self._engage_profiles.get(self.engage_profile, self._engage_profiles['medium'])
-        base = profile['engage_time_s']
+        _ = cycle_count
+        return profile['engage_us'], profile['engage_time_s']
+
+    def _get_disengage_pause_for_cycle(self, cycle_count: int) -> float:
+        base = self.rack_cycle_pause_s
         cycle_count = max(0, int(cycle_count))
-        if cycle_count <= 3:
-            trimmed = base - self.engage_trim_per_extra_cycle_s
+
+        if cycle_count == 0:
+            trimmed = base
+        elif cycle_count <= 2:
+            trimmed = base + self.disengage_trim_per_extra_cycle_s
         else:
-            trimmed = base - self.engage_trim_per_extra_cycle_high_s
-        return profile['engage_us'], max(0.25, trimmed)
+            trimmed = base + self.disengage_trim_per_extra_cycle_high_s
+        return max(0.05, trimmed)
 
     def _engage_rack(self, cycle_count: int):
         engage_us, engage_time = self._get_engage_time_for_cycle(cycle_count)
@@ -225,10 +233,10 @@ class ShooterController(Node):
         time.sleep(self.rack_hold_duration_s)
 
     def _disengage_rack(self, cycle_count: int):
-        _ = cycle_count
+        pause_s = self._get_disengage_pause_for_cycle(cycle_count)
         # Continuous servo release command.
         self._pi.set_servo_pulsewidth(self.rack_pin, 1000)
-        time.sleep(self.rack_cycle_pause_s)
+        time.sleep(pause_s)
         self._pi.set_servo_pulsewidth(self.rack_pin, 1500)
 
     def _open_gate(self):
