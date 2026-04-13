@@ -155,6 +155,8 @@ Place markers for navigation testing:
 - ArUco markers for visual navigation
 - Colored objects for detection testing
 
+The mission world already includes two static ArUco marker boards (`aruco_marker_0` and `aruco_marker_1`) placed in the corridor so camera-based detection can work in Gazebo.
+
 ## Performance Tips
 
 ### **Simulation Performance**

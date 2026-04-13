@@ -2,4 +2,6 @@ build/
 install/
 log/
 .github/copilot-instructions.md
+.github/agents
+logs/
 ~$*

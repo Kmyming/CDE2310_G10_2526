@@ -14,9 +14,9 @@ from std_msgs.msg import Bool
 
 
 
-class MoveOnAruco(Node):
+class DockingController(Node):
     def __init__(self):
-        super().__init__('move_on_aruco')
+        super().__init__('docking_controller')
 
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel_docking', 10)
         self.status_pub = self.create_publisher(Bool, '/dock_done', 10)
@@ -561,15 +561,11 @@ class MoveOnAruco(Node):
         self.cmd_pub.publish(Twist())
         super().destroy_node()
 
-
 def main(args=None):
     rclpy.init(args=args)
-    node = MoveOnAruco()
-
+    node = DockingController()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
     finally:
         node.destroy_node()
         rclpy.shutdown()

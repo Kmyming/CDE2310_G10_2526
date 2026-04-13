@@ -1,3 +1,93 @@
+## [2.9.4] - 2026-04-13
+Integrated shooter testbed into auto_explore package. Updated the auto_explore shooter subsystem to support real-hardware operation via pigpio (remote pigpiod) and adds launch/documentation wiring for the new shooter configuration options.
+
+### Fixed
+- fix(shooter): Added shooter launch arguments for pigpiod connection details and ultrasonic/delivery tuning, and forwarded them into shooter_controller.
+- fix(shooter): Refactored shooter_controller to use pigpio, add delivery modes (static/dynamic/bonus), and run delivery asynchronously with a busy lock.
+
+### Documentation
+- docs(README): Updated README/changelog documentation for the new shooter setup and arguments.
+
+## [2.9.3] - 2026-04-12
+Refactored the shooter node's architecture to use `pigpio` for gate control, improved the shooting sequence, and ensured proper GPIO cleanup.
+
+### Fixed
+- fix(shooter): Architecturally refactored the shooter node (`Payload_Delivery.py`) to use `pigpio` for SG90 gate servo control, enabling parallel rack engagement and gate operation via threading, and corrected the shooting sequence logic. This included proper resource cleanup in `destroy_node()` and refined pinion timing parameters in `Pinion_Rotation.py`. Added offset tuning parameters for control over servo gate & pinion gear activation timing sequence for real world finetuning.
+
+## [2.9.2] - 2026-04-12
+Refactored parameter loading for navigation and SLAM to use ROS 2 parameter server mechanisms, and removed the redundant marker logger.
+
+### Fixed
+- fix(navigation): Migrated `exploration_controller` to retrieve navigation tuning parameters from the ROS 2 parameter server, deprecating the previous direct YAML file access.
+- fix(slam): Implemented dynamic loading of SLAM Toolbox parameters through a new `slam_params_file` launch argument, referencing `mapper_params_online_async.yaml`.
+- fix(logging): Discontinued the `pose_subscriber` node, along with its launch arguments and console entry points, due to its redundant marker logging functionality.
+
+### Documentation
+- docs(README): Revised `README.md` to document the removal of the marker logger and include a new section for troubleshooting launch file updates.
+
+# Changelog
+## [2.9.2] - 2026-04-12
+Refined docking activation logic so the docking controller only engages when the FSM is in the docking state, preventing unintended docking behaviour during other mission phases.
+
+### Fixed
+- fix(docking): Updated `docking_controller.py` to subscribe to the `/states` topic and track the robot's overall FSM state before initiating docking.
+- fix(docking): Modified the docking controller to remain in `IDLE` by default and only transition to `SEARCH` when the FSM publishes `"DOCK"` on `/states`, ensuring docking logic is gated by the main robot state machine.
+- fix(docking): Prevented the docking state machine from starting automatically whenever marker data is available, reducing unintended activation outside the intended docking phase.
+
+## [2.9.1] - 2026-04-12
+Refactored parameter loading for navigation and SLAM to use ROS 2 parameter server mechanisms, and removed the redundant marker logger.
+
+### Fixed
+- fix(navigation): Updated `exploration_controller` to load navigation tuning parameters directly from the ROS 2 parameter server, replacing direct YAML file parsing.
+- fix(slam): Integrated SLAM Toolbox parameters via a new dedicated configuration file (`mapper_params_online_async.yaml`) and exposed it as a launch argument (`slam_params_file`).
+- fix(logging): Removed the `pose_subscriber` node, its associated launch arguments, and entry points, as it provided redundant marker logging functionality.
+
+### Documentation
+- docs(README): Updated `README.md` to reflect the removal of the marker logger, its launch argument, and added a new troubleshooting section for launch file changes.
+
+## [2.9.0] - 2026-04-12
+Integrated servo-driven pinion for payload delivery, enhanced FSM communication with launch completion signals, and refined shooting timings.
+
+### Added / Changed
+- feat(shooter): Integrated `Pinion_Rotation` module for servo-controlled rack and pinion payload delivery, replacing direct GPIO rack control in `Shooter/Payload_Delivery.py`.
+- feat(fsm): Implemented publishing to `/launch_done` topic from `Shooter/Payload_Delivery.py` after static, dynamic, or bonus deliveries.
+- feat(shooter): Adjusted `PHASE1_DEGREES` to `180` in `Shooter/Pinion_Rotation.py` for improved rack engagement.
+
+### Fixed
+- fix(shooter): Updated GPIO pin for gate control from `17` to `12` in `Shooter/Payload_Delivery.py`.
+- fix(shooter): Tuned shooting timings, including `delivery2_delay` and servo angle hold duration in `Shooter/Payload_Delivery.py`.
+- fix(shooter): Ensured proper motor stop and cleanup after `run_cycle` in `Shooter/Pinion_Rotation.py`.
+
+## [2.8.0] - 2026-04-11
+Refined shooter mechanism parameters for enhanced performance and updated documentation for new launch configurations.
+
+### Added / Changed
+- feat(shooter): Tuned shooter parameters in `Shooter/Pinion_Rotation.py` for drift calibration and continuous shooting, introducing configurable engagement profiles (mild, medium, strong), per-cycle engagement time trimming, and updated timing parameters (`HOLD_DURATION`, `CYCLE_PAUSE`, `ENGAGE_US`, `DISENGAGE_US`, `ENGAGE_TIME_S`, `DISENGAGE_TIME_S`, `ENGAGE_TRIM_PER_EXTRA_CYCLE_S`, `ENGAGE_TRIM_PER_EXTRA_CYCLE_S_2`, `ENGAGE_MIN_TIME_S`).
+
+### Documentation
+- docs(README): Updated `README.md` to include the `shooter_enable_hardware` launch argument and clarified launch command usage.
+
+## [2.7.0] - 2026-04-11
+
+Introduced a new hardware control script for the shooter's rack and pinion mechanism, enabling precise servo-driven engagement and disengagement.
+
+### Added / Changed
+- feat(shooter): Implemented `Shooter/Pinion_Rotation.py` to control an MG90S continuous rotation servo for a rack and pinion system using `pigpio` on Raspberry Pi. This includes functions for forward rotation, stopping, timed degree rotation, and a full cycle of engaging, holding, and disengaging the rack.
+
+## [2.6.0] - 2026-04-09
+Integrated package updates, enhancing the docking controller with timeout and target marker capabilities, improving the mission controller's zone tracking and launch completion handling, and refining ArUco marker detection. Removed the redundant pose subscriber.
+
+### Added / Changed
+- feat(auto_explore.docking): Added `dock_cycle_timeout_sec` and `target_marker_id` parameters to `docking_controller.py` for improved control and specific marker targeting.
+- feat(auto_explore.mission_control): Enhanced `mission_controller.py` with dynamic zone tracking via TF, robust launch completion handling, and refined state transitions for docking and exploration.
+- feat(auto_explore.aruco): Updated `marker_size_m` to `0.053` and adjusted camera subscription QoS to `qos_profile_sensor_data` in `pose_publisher.py`.
+- feat(auto_explore.config): Adjusted `speed` parameter in `params.yaml` to `0.09`.
+
+### Fixed
+- fix(auto_explore.aruco): Removed the deprecated `pose_subscriber.py` node.
+- fix(auto_explore.docking): Improved `dock_done` publishing logic in `docking_controller.py` to prevent duplicates and log success/failure.
+- fix(auto_explore.aruco): Optimized `marker_detected` publishing in `pose_publisher.py` to only trigger on visibility state changes.
+
 ## [2.5.0] - 2026-04-09
 Implemented advanced zone management in the FSM, enabling dynamic identification and tracking of ArUco marker zones using TF, and preventing re-visitation.
 
