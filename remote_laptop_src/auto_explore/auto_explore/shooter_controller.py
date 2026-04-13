@@ -22,7 +22,7 @@ class ShooterController(Node):
         self.declare_parameter('rack_pin', 13)
         self.declare_parameter('ultrasonic_trigger_pin', 23)
         self.declare_parameter('ultrasonic_echo_pin', 24)
-        self.declare_parameter('ultrasonic_distance_threshold_m', 0.20)
+        self.declare_parameter('ultrasonic_distance_threshold_m', 0.70)
         self.declare_parameter('ultrasonic_simulated_distance_m', 0.15)
         self.declare_parameter('gate_open_us', 500)
         self.declare_parameter('gate_close_us', 1500)
@@ -36,6 +36,8 @@ class ShooterController(Node):
         self.declare_parameter('rack_hold_duration_s', 1.0)
         self.declare_parameter('rack_cycle_pause_s', 1.0)
         self.declare_parameter('dynamic_poll_interval_s', 0.05)
+        self.declare_parameter('ultrasonic_echo_timeout_s', 0.03)
+        self.declare_parameter('ultrasonic_poll_sleep_s', 0.0005)
 
         self.enable_hardware = bool(self.get_parameter('enable_hardware').value)
         self.simulated_shot_delay_sec = float(self.get_parameter('simulated_shot_delay_sec').value)
@@ -59,6 +61,19 @@ class ShooterController(Node):
         self.rack_hold_duration_s = float(self.get_parameter('rack_hold_duration_s').value)
         self.rack_cycle_pause_s = float(self.get_parameter('rack_cycle_pause_s').value)
         self.dynamic_poll_interval_s = float(self.get_parameter('dynamic_poll_interval_s').value)
+        self.ultrasonic_echo_timeout_s = float(self.get_parameter('ultrasonic_echo_timeout_s').value)
+        self.ultrasonic_poll_sleep_s = float(self.get_parameter('ultrasonic_poll_sleep_s').value)
+
+        self._engage_profiles = {
+            'mild': {'engage_us': 1000, 'engage_time_s': 0.40},
+            'medium': {'engage_us': 1200, 'engage_time_s': 0.68},
+            'strong': {'engage_us': 1300, 'engage_time_s': 1.01},
+        }
+        if self.engage_profile not in self._engage_profiles:
+            self.get_logger().warn(
+                f"Unknown engage_profile '{self.engage_profile}', falling back to 'medium'"
+            )
+            self.engage_profile = 'medium'
 
         self.done_pub = self.create_publisher(Bool, '/shoot_done', 10)
         self.create_subscription(String, '/shoot_type', self.trigger_callback, 10)
@@ -141,15 +156,11 @@ class ShooterController(Node):
         delivery2_delay = 0.2
         delivery3_delay = 8.2
 
-        now = time.time()
         self._shoot_once_hardware()
-        while time.time() - now < delivery2_delay:
-            pass
+        time.sleep(delivery2_delay)
 
-        now = time.time()
         self._shoot_once_hardware()
-        while time.time() - now < delivery3_delay:
-            pass
+        time.sleep(delivery3_delay)
 
         self._shoot_once_hardware()
 
@@ -169,9 +180,7 @@ class ShooterController(Node):
 
         for _ in range(3):
             self._shoot_once_hardware()
-            now = time.time()
-            while time.time() - now < delivery_delay:
-                pass
+            time.sleep(delivery_delay)
 
     def _shoot_once_hardware(self):
         cycle_index = self._global_shot_count
@@ -198,23 +207,19 @@ class ShooterController(Node):
         self._global_shot_count += 1
 
     def _get_engage_time_for_cycle(self, cycle_count: int) -> float:
-        profile_base = {
-            'mild': 0.26,
-            'medium': 0.30,
-            'strong': 0.35,
-        }
-        base = profile_base.get(self.engage_profile, 0.30)
+        profile = self._engage_profiles.get(self.engage_profile, self._engage_profiles['medium'])
+        base = profile['engage_time_s']
         cycle_count = max(0, int(cycle_count))
         if cycle_count <= 3:
             trimmed = base - self.engage_trim_per_extra_cycle_s
         else:
             trimmed = base - self.engage_trim_per_extra_cycle_high_s
-        return max(0.25, trimmed)
+        return profile['engage_us'], max(0.25, trimmed)
 
     def _engage_rack(self, cycle_count: int):
-        engage_time = self._get_engage_time_for_cycle(cycle_count)
+        engage_us, engage_time = self._get_engage_time_for_cycle(cycle_count)
         # Continuous servo pullback command.
-        self._pi.set_servo_pulsewidth(self.rack_pin, 1300)
+        self._pi.set_servo_pulsewidth(self.rack_pin, engage_us)
         time.sleep(engage_time)
         self._pi.set_servo_pulsewidth(self.rack_pin, 1500)
         time.sleep(self.rack_hold_duration_s)
@@ -239,15 +244,23 @@ class ShooterController(Node):
             return self.ultrasonic_simulated_distance_m
 
         self._pi.gpio_trigger(self.ultrasonic_trigger_pin, 10, 1)
+        read_start = time.monotonic()
         while self._pi.read(self.ultrasonic_echo_pin) == 0:
-            pass
-        pulse_start = time.time()
+            if time.monotonic() - read_start > self.ultrasonic_echo_timeout_s:
+                return None
+            time.sleep(self.ultrasonic_poll_sleep_s)
+
+        pulse_start = time.monotonic()
 
         while self._pi.read(self.ultrasonic_echo_pin) == 1:
-            pass
-        pulse_end = time.time()
+            if time.monotonic() - pulse_start > self.ultrasonic_echo_timeout_s:
+                return None
+            time.sleep(self.ultrasonic_poll_sleep_s)
+
+        pulse_end = time.monotonic()
 
         duration = pulse_end - pulse_start
+        self.get_logger().info(f"Ultrasonic distance: {duration * 343.0 / 2.0:.2f} m")
         return (duration * 343.0) / 2.0
 
     def destroy_node(self):
