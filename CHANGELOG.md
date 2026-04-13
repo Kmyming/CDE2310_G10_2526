@@ -1,3 +1,13 @@
+## [2.9.4] - 2026-04-13
+Integrated shooter testbed into auto_explore package. Updated the auto_explore shooter subsystem to support real-hardware operation via pigpio (remote pigpiod) and adds launch/documentation wiring for the new shooter configuration options.
+
+### Fixed
+- fix(shooter): Added shooter launch arguments for pigpiod connection details and ultrasonic/delivery tuning, and forwarded them into shooter_controller.
+- fix(shooter): Refactored shooter_controller to use pigpio, add delivery modes (static/dynamic/bonus), and run delivery asynchronously with a busy lock.
+
+### Documentation
+- docs(README): Updated README/changelog documentation for the new shooter setup and arguments.
+
 ## [2.9.3] - 2026-04-12
 Refactored the shooter node's architecture to use `pigpio` for gate control, improved the shooting sequence, and ensured proper GPIO cleanup.
 
