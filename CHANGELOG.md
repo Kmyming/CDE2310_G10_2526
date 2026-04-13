@@ -1,3 +1,5 @@
+
+
 ## [2.9.5] - 2026-04-13
 Tuned various shooter parameters and refined timing logic for improved static payload delivery.
 
