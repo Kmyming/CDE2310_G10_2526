@@ -60,29 +60,62 @@ colcon build --packages-select auto_explore
 source install/setup.bash
 ```
 
-### Troubleshooting: Launch Changes Not Taking Effect
+### Additional Setup (Consolidated)
 
-If you edit launch/config files but runtime still shows old behavior, you are usually running stale files from `install/`.
+Use this section for all non-default setup needed for reliable bringup on real hardware.
 
-Use this sequence after edits to `remote_laptop_src/launch/*.py`, `remote_laptop_src/config/*.yaml`, or package Python modules:
+#### A) Remote Laptop Python dependency (for shooter node)
+
+Install pigpio Python client on the laptop that launches `auto_explore`:
+
+```bash
+pip3 install pigpio
+```
+
+#### B) Raspberry Pi boot-time shooter prerequisites
+
+On the Pi, `pigpiod` and IP print are already configured in `.bashrc` per your workflow.
+After boot, the Pi terminal shows its current IP (`hostname -I`).
+
+If this is not set up, Equivalent commands are:
+
+```bash
+sudo pigpiod
+hostname -I
+```
+
+#### C) Real-robot shooter launch rule
+
+Copy the IP shown on Pi boot and pass it to `shooter_pigpiod_host` from the laptop:
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=false \
+  enable_fsm:=false enable_navigation:=false enable_markers:=false \
+  enable_docking:=false enable_shooter:=true shooter_enable_hardware:=true \
+  shooter_pigpiod_host:=<PI_IP_FROM_BOOT>
+```
+
+#### D) After code edits
+
+If launch/config changes do not appear at runtime, rebuild and source again:
 
 ```bash
 cd ~/turtlebot3_ws
 source /opt/ros/humble/setup.bash
 colcon build --packages-select auto_explore
 source install/setup.bash
-ros2 launch auto_explore global_bringup.py --show-arguments
 ```
 
-Quick validation checks:
+#### E) RViz configuration update (required)
+
+Keep team visualization consistent by updating local RViz config:
 
 ```bash
-ros2 pkg list | grep auto_explore
-ros2 pkg prefix auto_explore
-ros2 launch auto_explore global_bringup.py --show-arguments | grep slam_params_file
+cp ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz ~/tb3_cartographer.rviz.backup
+nano ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz
 ```
 
-If `slam_params_file` or `nav_params_file` does not appear in `--show-arguments`, the installed launch files are not updated yet.
+Replace the file contents with the full RViz payload in the appendix section below.
 
 ### Launch Sequences (Verified)
 
@@ -161,11 +194,27 @@ enable_markers:=true|false     # Enable ArUco marker detection
 enable_docking:=true|false     # Enable docking controller
 enable_shooter:=true|false     # Enable shooter controller
 shooter_enable_hardware:=false|true # GPIO actuation (physical robot only)
+shooter_pigpiod_host:=localhost|<pi-host-or-ip> # pigpiod host for shooter hardware
+shooter_pigpiod_port:=8888       # pigpiod port on the Raspberry Pi
+shooter_ultrasonic_trigger_pin:=23   # Ultrasonic trigger GPIO pin for dynamic shooting
+shooter_ultrasonic_echo_pin:=24      # Ultrasonic echo GPIO pin for dynamic shooting
+shooter_ultrasonic_distance_threshold_m:=0.20 # Shoot when distance <= threshold
+shooter_ultrasonic_simulated_distance_m:=0.15 # Sim fallback distance when hardware disabled
+shooter_engage_profile:=mild|medium|strong    # Pinion engage profile
 ```
 
 Recommended values:
 - Gazebo/simulation: `shooter_enable_hardware:=false`
 - Real robot hardware: `shooter_enable_hardware:=true`
+
+Shooter mode behavior:
+- `static`: fixed 3-shot delivery sequence using shooter timing profile
+- `dynamic`: 3-shot delivery gated by ultrasonic threshold crossing (`distance <= threshold`)
+- `bonus`: fixed 3-shot sequence with short spacing
+
+Design note:
+- Shooter does not use marker IDs or TF for shot timing.
+- FSM publishes `/shoot_type` to indicate the delivery mode.
 
 ### Architecture
 
@@ -304,106 +353,7 @@ Expected: all critical topics are present and active.
 
 ---
 
-## ⚙️ SLAM Optimization - Required Configuration
-
-**⚠️ IMPORTANT:** All team members must update the SLAM Toolbox parameters to improve map responsiveness and accuracy. This is a required setup step before running any autonomous exploration missions.
-
-### Update SLAM Mapper Parameters
-
-Navigate to the SLAM Toolbox configuration directory and update the `mapper_params_online_async.yaml` file:
-
-```bash
-# Edit the configuration file
-nano /opt/ros/humble/share/slam_toolbox/config/mapper_params_online_async.yaml
-```
-
-Apply the following parameter changes to improve SLAM efficiency and map responsiveness:
-
-```yaml
-slam_toolbox:
-    ros__parameters:
-    
-    solver_plugin: solver_plugins::CeresSolver
-    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
-    ceres_preconditioner: SCHUR_JACOBI
-    ceres_trust_strategy: LEVENBERG_MARQUARDT
-    ceres_dogleg_type: TRADITIONAL_DOGLEG
-    ceres_loss_function: None
-
-    odom_frame: odom
-    map_frame: map
-    base_frame: base_footprint
-    scan_topic: /scan
-    use_map_saver: true
-    mode: mapping
-
-    debug_logging: false
-    throttle_scans: 1
-    transform_publish_period: 0.02
-    map_update_interval: 1.0        # was 5.0 - faster map updates
-    resolution: 0.05
-    min_laser_range: 0.12           # was 0.0 - match LiDAR's (LDS-02) actual min range
-    max_laser_range: 3.5            # was 20.0 - match LiDAR's (LDS-02) actual max range
-    minimum_time_interval: 0.2      # was 0.5 - process scans more frequently
-    transform_timeout: 0.2
-    tf_buffer_duration: 30.
-    stack_size_to_use: 40000000
-    enable_interactive_mode: true
-
-    use_scan_matching: true
-    use_scan_barycenter: true
-    minimum_travel_distance: 0.2    # was 0.5 - update after smaller movements
-    minimum_travel_heading: 0.2     # was 0.5 - update after smaller rotations
-    scan_buffer_size: 10
-    scan_buffer_maximum_scan_distance: 3.5  # match max_laser_range
-    link_match_minimum_response_fine: 0.1  
-    link_scan_maximum_distance: 1.5
-    loop_search_maximum_distance: 3.0
-    do_loop_closing: true 
-    loop_match_minimum_chain_size: 10           
-    loop_match_maximum_variance_coarse: 3.0  
-    loop_match_minimum_response_coarse: 0.35    
-    loop_match_minimum_response_fine: 0.45
-
-    correlation_search_space_dimension: 0.5
-    correlation_search_space_resolution: 0.01
-    correlation_search_space_smear_deviation: 0.1 
-
-    loop_search_space_dimension: 8.0
-    loop_search_space_resolution: 0.05
-    loop_search_space_smear_deviation: 0.03
-
-    distance_variance_penalty: 0.5      
-    angle_variance_penalty: 1.0    
-    fine_search_angle_offset: 0.00349     
-    coarse_search_angle_offset: 0.349   
-    coarse_angle_resolution: 0.0349        
-    minimum_angle_penalty: 0.9
-    minimum_distance_penalty: 0.5
-    use_response_expansion: true
-    min_pass_through: 2
-    occupancy_threshold: 0.1
-```
-
-### Key Changes Summary
-
-The critical improvements made:
-- **`map_update_interval`**: Reduced from 5.0 to 1.0 seconds for faster map updates
-- **`min_laser_range`**: Set to 0.12 to match LiDAR (LDS-02) actual minimum range
-- **`max_laser_range`**: Set to 3.5 to match LiDAR (LDS-02) actual maximum range
-- **`minimum_time_interval`**: Reduced from 0.5 to 0.2 for more frequent scan processing
-- **`minimum_travel_distance`**: Reduced from 0.5 to 0.2 for updates after smaller movements
-- **`minimum_travel_heading`**: Reduced from 0.5 to 0.2 for updates after smaller rotations
-
-These changes ensure the map updates more responsively as the robot explores, resulting in better real-time mapping performance and more accurate frontier detection for autonomous exploration.
-
----
-
-## 📊 RViz Configuration Update - Required
-
-**⚠️ IMPORTANT:** All team members must update their local `tb3_cartographer.rviz` file. This ensures everyone has the same visualization setup including the exploration path display.
-
-### Update RViz Configuration
+### Appendix: RViz Full Configuration Payload
 
 **Step 1:** Backup your current config
 ```bash
