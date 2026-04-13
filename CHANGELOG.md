@@ -1,3 +1,12 @@
+## [2.10.0] - 2026-04-13
+Introduced a new FSM implementation with dock-based logic and standardized the launch completion signal across the system.
+
+### Added / Changed
+- feat(fsm): Implemented a new FSM (`FSM/fsm_dock_version.py`) that manages states (EXPLORE, DOCK, LAUNCH, END), tracks visited zones using a dictionary, and publishes current zone information during DOCK and LAUNCH states.
+
+### Fixed
+- fix(fsm): Standardized the launch completion signal in `mission_controller.py` by removing the `/launch_done` subscription and its callback, exclusively using `/shoot_done` for launch completion events.
+
 ## [2.9.4] - 2026-04-13
 Integrated shooter testbed into auto_explore package. Updated the auto_explore shooter subsystem to support real-hardware operation via pigpio (remote pigpiod) and adds launch/documentation wiring for the new shooter configuration options.
 
