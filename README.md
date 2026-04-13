@@ -1,12 +1,19 @@
-# Note: Full integrated marker detection coming soon.
-# Setup Instructions
+# TurtleBot3 Autonomous Exploration & Mission Control System
+
+## Overview
+
+This repository contains a complete ROS2-based autonomous exploration system for TurtleBot3. The robot autonomously explores environments, detects ArUco markers, performs docking, and executes payload delivery—all orchestrated by a finite state machine.
+
+**Current Status:** ✓ System operational - all components tested and verified
+
+---
 
 ## Prerequisites
 
-- ROS2 - Humble
-- Slam Toolbox
-- Turtlebot3 Package
-- TurtleBot3 workspace (`turtlebot3_ws`)
+- **ROS2:** Humble
+- **Packages:** slam_toolbox, turtlebot3, turtlebot3_gazebo, opencv-python
+- **Hardware:** TurtleBot3 Burger (with camera sensor)
+- **Workspace:** `turtlebot3_ws`
 
 ## Installation
 
@@ -53,26 +60,91 @@ colcon build --packages-select auto_explore
 source install/setup.bash
 ```
 
-### Launch Sequences
+### Additional Setup (Consolidated)
+
+Use this section for all non-default setup needed for reliable bringup on real hardware.
+
+#### A) Remote Laptop Python dependency (for shooter node)
+
+Install pigpio Python client on the laptop that launches `auto_explore`:
+
+```bash
+pip3 install pigpio
+```
+
+#### B) Raspberry Pi boot-time shooter prerequisites
+
+On the Pi, `pigpiod` and IP print are already configured in `.bashrc` per your workflow.
+After boot, the Pi terminal shows its current IP (`hostname -I`).
+
+If this is not set up, Equivalent commands are:
+
+```bash
+sudo pigpiod
+hostname -I
+```
+
+#### C) Real-robot shooter launch rule
+
+Copy the IP shown on Pi boot and pass it to `shooter_pigpiod_host` from the laptop:
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=false \
+  enable_fsm:=false enable_navigation:=false enable_markers:=false \
+  enable_docking:=false enable_shooter:=true shooter_enable_hardware:=true \
+  shooter_pigpiod_host:=<PI_IP_FROM_BOOT>
+```
+
+#### D) After code edits
+
+If launch/config changes do not appear at runtime, rebuild and source again:
+
+```bash
+cd ~/turtlebot3_ws
+source /opt/ros/humble/setup.bash
+colcon build --packages-select auto_explore
+source install/setup.bash
+```
+
+#### E) RViz configuration update (required)
+
+Keep team visualization consistent by updating local RViz config:
+
+```bash
+cp ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz ~/tb3_cartographer.rviz.backup
+nano ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz
+```
+
+Replace the file contents with the full RViz payload in the appendix section below.
+
+### Launch Sequences (Verified)
 
 #### Gazebo Simulation
 
-**Terminal 1:** Launch default Gazebo world
+`global_bringup.py` is the unified command for the **mission stack** (SLAM + controllers + markers), but Gazebo must still be started separately.
+
+**Terminal 1 (Gazebo):**
 
 ```bash
 export TURTLEBOT3_MODEL=burger
 ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
 ```
 
-**Terminal 2:** Launch auto_explore mission control system
+**Terminal 2 (Unified mission stack):**
 
 ```bash
 ros2 launch auto_explore global_bringup.py \
   use_sim_time:=true \
   enable_slam:=true \
-  enable_rviz:=true \
-  enable_markers:=true
+  enable_rviz:=false \
+  enable_fsm:=true \
+  enable_navigation:=true \
+  enable_markers:=true \
+  enable_docking:=false \
+  enable_shooter:=false
 ```
+
+This command is validated against current launch arguments in `auto_explore/launch/global_bringup.py`.
 
 #### Physical TurtleBot3 Robot
 
@@ -93,8 +165,13 @@ ros2 launch auto_explore global_bringup.py \
   use_sim_time:=false \
   enable_slam:=true \
   enable_rviz:=true \
-  enable_markers:=true
+  enable_markers:=true \
+  enable_docking:=true \
+  enable_shooter:=true \
+  shooter_enable_hardware:=true
 ```
+
+**Important:** copy the command exactly as plain text into bash. Do **not** include Markdown link syntax like `[global_bringup.py](...)`, which causes shell parsing errors.
 
 ### Launch Components
 
@@ -104,7 +181,6 @@ This launches:
 - **FSM Controller** (mission state machine)
 - **Exploration Controller** (frontier-based autonomous navigation)
 - **ArUco Marker Detection** (pose publisher) - enabled with `enable_markers:=true`
-- **Marker Logger** (logging marker detections to `./logs/`)
 
 ### Launch Arguments
 
@@ -112,8 +188,33 @@ This launches:
 use_sim_time:=true|false      # Use Gazebo time (true) or real time (false)
 enable_slam:=true|false        # Enable SLAM Toolbox mapping
 enable_rviz:=true|false        # Enable RViz visualization
+enable_fsm:=true|false         # Enable mission FSM
+enable_navigation:=true|false  # Enable frontier exploration controller
 enable_markers:=true|false     # Enable ArUco marker detection
+enable_docking:=true|false     # Enable docking controller
+enable_shooter:=true|false     # Enable shooter controller
+shooter_enable_hardware:=false|true # GPIO actuation (physical robot only)
+shooter_pigpiod_host:=localhost|<pi-host-or-ip> # pigpiod host for shooter hardware
+shooter_pigpiod_port:=8888       # pigpiod port on the Raspberry Pi
+shooter_ultrasonic_trigger_pin:=23   # Ultrasonic trigger GPIO pin for dynamic shooting
+shooter_ultrasonic_echo_pin:=24      # Ultrasonic echo GPIO pin for dynamic shooting
+shooter_ultrasonic_distance_threshold_m:=0.20 # Shoot when distance <= threshold
+shooter_ultrasonic_simulated_distance_m:=0.15 # Sim fallback distance when hardware disabled
+shooter_engage_profile:=mild|medium|strong    # Pinion engage profile
 ```
+
+Recommended values:
+- Gazebo/simulation: `shooter_enable_hardware:=false`
+- Real robot hardware: `shooter_enable_hardware:=true`
+
+Shooter mode behavior:
+- `static`: fixed 3-shot delivery sequence using shooter timing profile
+- `dynamic`: 3-shot delivery gated by ultrasonic threshold crossing (`distance <= threshold`)
+- `bonus`: fixed 3-shot sequence with short spacing
+
+Design note:
+- Shooter does not use marker IDs or TF for shot timing.
+- FSM publishes `/shoot_type` to indicate the delivery mode.
 
 ### Architecture
 
@@ -124,129 +225,673 @@ The `auto_explore` package contains:
 - **mission_controller.py** - FSM state machine orchestration
 - **exploration_controller.py** - Frontier-based autonomous exploration
 - **pose_publisher.py** - ArUco marker detection
-- **pose_subscriber.py** - Marker logging with rolling buffer
 - **config/params.yaml** - Local exploration tuning parameters
+
+### Subsystem Test Instructions
+
+Use these tests to validate each subsystem independently after sourcing the workspace.
+
+#### 1) Package + Launch Interface Sanity
+
+```bash
+ros2 pkg list | grep auto_explore
+ros2 launch auto_explore global_bringup.py --show-args
+ros2 pkg executables auto_explore
+```
+
+Expected: package is discoverable, all launch args listed, and executables include `mission_controller`, `exploration_controller`, `pose_publisher`, `docking_controller`, `shooter_controller`.
+
+#### 2) Navigation Infrastructure (SLAM/RViz)
+
+```bash
+ros2 launch auto_explore nav_bringup.py use_sim_time:=true enable_slam:=true enable_rviz:=false
+```
+
+Check in another terminal:
+
+```bash
+ros2 topic list | grep -E '^/map$|^/map_metadata$'
+```
+
+Expected: `/map` is available and updating.
+
+#### 3) FSM Only
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
+  enable_fsm:=true enable_navigation:=false enable_markers:=false \
+  enable_docking:=false enable_shooter:=false
+```
+
+Check:
+
+```bash
+ros2 topic echo /states
+```
+
+Expected: FSM publishes `EXPLORE` on startup.
+
+#### 4) Exploration Controller Only
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
+  enable_fsm:=false enable_navigation:=true enable_markers:=false \
+  enable_docking:=false enable_shooter:=false
+```
+
+Check:
+
+```bash
+ros2 topic hz /cmd_vel
+ros2 topic echo /map_explored
+```
+
+Expected: `/cmd_vel` publishes while navigating; `/map_explored` eventually becomes true.
+
+#### 5) Marker Detection
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
+  enable_fsm:=false enable_navigation:=false enable_markers:=true \
+  enable_docking:=false enable_shooter:=false
+```
+
+Check:
+
+```bash
+ros2 topic echo /aruco/debug
+```
+
+Expected: heartbeat JSON plus marker JSON when marker is in view.
+
+#### 6) Docking Controller
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
+  enable_fsm:=false enable_navigation:=false enable_markers:=false \
+  enable_docking:=true enable_shooter:=false
+```
+
+Check:
+
+```bash
+ros2 topic info /cmd_vel_docking
+ros2 topic info /dock_done
+```
+
+Expected: docking topics are present; node is alive.
+
+#### 7) Shooter Controller
+
+Simulation-safe launch:
+
+```bash
+ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
+  enable_fsm:=false enable_navigation:=false enable_markers:=false \
+  enable_docking:=false enable_shooter:=true \
+  shooter_enable_hardware:=false
+```
+
+Expected: shooter node starts without GPIO access errors.
+
+#### 8) Full Smoke Test
+
+```bash
+ros2 launch auto_explore global_bringup.py \
+  use_sim_time:=true enable_slam:=true enable_rviz:=false \
+  enable_fsm:=true enable_navigation:=true enable_markers:=true \
+  enable_docking:=false enable_shooter:=false
+```
+
+Checks:
+
+```bash
+ros2 topic list | grep -E '^/states$|^/aruco/debug$|^/cmd_vel$|^/map$|^/odom$'
+```
+
+Expected: all critical topics are present and active.
 
 ---
 
-## LEGACY: Manual Launch (For Testbedding & Reference)
+### Appendix: RViz Full Configuration Payload
 
-### Installation (Legacy - autonomous_exploration package)
-
-If you want to use the old `autonomous_exploration` package:
-
+**Step 1:** Backup your current config
 ```bash
-cd ~/turtlebot3_ws/src
-git clone https://github.com/Kmyming/CDE2310_G10_2526.git autonomous_exploration
-cd ~/turtlebot3_ws
-colcon build --packages-select autonomous_exploration
-source install/setup.bash
+cp ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz ~/tb3_cartographer.rviz.backup
 ```
 
-Verify:
+**Step 2:** Replace the entire contents of `tb3_cartographer.rviz` with this configuration
+
+Open the file:
 ```bash
-ros2 pkg list | grep autonomous_exploration
+nano ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz
 ```
 
-### Manual Component Launch
+Delete all existing content and paste this entire configuration:
 
-If you prefer to run components separately:
-
-1. **Launch the Map Node (SLAM):**
-
-```bash
-ros2 launch slam_toolbox online_async_launch.py
+```yaml
+Panels:
+  - Class: rviz_common/Displays
+    Help Height: 78
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /Global Options1
+        - /LaserScan1/Topic1
+      Splitter Ratio: 0.3916349709033966
+    Tree Height: 347
+  - Class: rviz_common/Selection
+    Name: Selection
+  - Class: rviz_common/Tool Properties
+    Expanded:
+      - /Publish Point1
+      - /2D Pose Estimate1
+    Name: Tool Properties
+    Splitter Ratio: 0.5886790156364441
+  - Class: rviz_common/Views
+    Expanded:
+      - /Current View1
+    Name: Views
+    Splitter Ratio: 0.5
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 0.5
+      Cell Size: 1
+      Class: rviz_default_plugins/Grid
+      Color: 160; 160; 164
+      Enabled: true
+      Line Style:
+        Line Width: 0.029999999329447746
+        Value: Lines
+      Name: Grid
+      Normal Cell Count: 0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Plane: XY
+      Plane Cell Count: 10
+      Reference Frame: <Fixed Frame>
+      Value: true
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Frame Timeout: 15
+      Frames:
+        All Enabled: false
+        base_footprint:
+          Value: false
+        base_link:
+          Value: true
+        base_scan:
+          Value: false
+        caster_back_link:
+          Value: false
+        imu_link:
+          Value: false
+        map:
+          Value: false
+        odom:
+          Value: false
+        wheel_left_link:
+          Value: false
+        wheel_right_link:
+          Value: false
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: true
+      Tree:
+        map:
+          odom:
+            base_footprint:
+              base_link:
+                base_scan:
+                  {}
+                caster_back_link:
+                  {}
+                imu_link:
+                  {}
+                wheel_left_link:
+                  {}
+                wheel_right_link:
+                  {}
+      Update Interval: 0
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz_default_plugins/LaserScan
+      Color: 255; 255; 255
+      Color Transformer: Intensity
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4439
+      Min Color: 0; 0; 0
+      Min Intensity: 105
+      Name: LaserScan
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.019999999552965164
+      Style: Boxes
+      Topic:
+        Depth: 50
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Best Effort 
+        Value: /scan
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Angle Tolerance: 0.10000000149011612
+      Class: rviz_default_plugins/Odometry
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.30000001192092896
+          Color: 204; 51; 204
+          Scale: 1
+          Value: true
+        Value: false
+      Enabled: false
+      Keep: 100
+      Name: Odometry
+      Position Tolerance: 0.10000000149011612
+      Shape:
+        Alpha: 1
+        Axes Length: 1
+        Axes Radius: 0.10000000149011612
+        Color: 255; 25; 0
+        Head Length: 0.30000001192092896
+        Head Radius: 0.10000000149011612
+        Shaft Length: 1
+        Shaft Radius: 0.05000000074505806
+        Value: Arrow
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /odom
+      Value: false
+    - Alpha: 0.699999988079071
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: true
+      Name: Map
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /map
+      Update Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /map_updates
+      Use Timestamp: false
+      Value: true
+    - Class: rviz_common/Group
+      Displays:
+        - Class: rviz_common/Group
+          Displays:
+            - Alpha: 0.699999988079071
+              Class: rviz_default_plugins/Map
+              Color Scheme: costmap
+              Draw Behind: true
+              Enabled: true
+              Name: Map
+              Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                Filter size: 10
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /global_costmap/costmap
+              Update Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /global_costmap/costmap_updates
+              Use Timestamp: false
+              Value: true
+            - Alpha: 1
+              Buffer Length: 1
+              Class: rviz_default_plugins/Path
+              Color: 255; 0; 0
+              Enabled: true
+              Head Diameter: 0.30000001192092896
+              Head Length: 0.20000000298023224
+              Length: 0.30000001192092896
+              Line Style: Lines
+              Line Width: 0.029999999329447746
+              Name: Path
+              Offset:
+                X: 0
+                Y: 0
+                Z: 0
+              Pose Color: 255; 85; 255
+              Pose Style: None
+              Radius: 0.029999999329447746
+              Shaft Diameter: 0.10000000149011612
+              Shaft Length: 0.10000000149011612
+              Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                Filter size: 10
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /global_plan
+              Value: true
+          Enabled: true
+          Name: Global Map
+        - Class: rviz_common/Group
+          Displays:
+            - Alpha: 1
+              Class: rviz_default_plugins/Polygon
+              Color: 25; 255; 0
+              Enabled: true
+              Name: Polygon
+              Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                Filter size: 10
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /local_costmap/footprint
+              Value: true
+            - Alpha: 0.699999988079071
+              Class: rviz_default_plugins/Map
+              Color Scheme: costmap
+              Draw Behind: false
+              Enabled: true
+              Name: Map
+              Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                Filter size: 10
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /local_costmap/costmap
+              Update Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /local_costmap/costmap_updates
+              Use Timestamp: false
+              Value: true
+            - Alpha: 1
+              Buffer Length: 1
+              Class: rviz_default_plugins/Path
+              Color: 255; 255; 0
+              Enabled: true
+              Head Diameter: 0.30000001192092896
+              Head Length: 0.20000000298023224
+              Length: 0.30000001192092896
+              Line Style: Lines
+              Line Width: 0.029999999329447746
+              Name: Path
+              Offset:
+                X: 0
+                Y: 0
+                Z: 0
+              Pose Color: 255; 85; 255
+              Pose Style: None
+              Radius: 0.029999999329447746
+              Shaft Diameter: 0.10000000149011612
+              Shaft Length: 0.10000000149011612
+              Topic:
+                Depth: 5
+                Durability Policy: Volatile
+                Filter size: 10
+                History Policy: Keep Last
+                Reliability Policy: Reliable
+                Value: /local_plan
+              Value: true
+          Enabled: true
+          Name: Local Map
+        - Alpha: 1
+          Arrow Length: 0.05000000074505806
+          Axes Length: 0.30000001192092896
+          Axes Radius: 0.009999999776482582
+          Class: rviz_default_plugins/PoseArray
+          Color: 0; 192; 0
+          Enabled: true
+          Head Length: 0.07000000029802322
+          Head Radius: 0.029999999329447746
+          Name: PoseArray
+          Shaft Length: 0.23000000417232513
+          Shaft Radius: 0.009999999776482582
+          Shape: Arrow (Flat)
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            Filter size: 10
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /particlecloud
+          Value: true
+      Enabled: false
+      Name: Navigation
+    - Class: rviz_common/Group
+      Displays:
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 0.18203988671302795
+            Min Value: 0.18195410072803497
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz_default_plugins/PointCloud2
+          Color: 0; 255; 0
+          Color Transformer: FlatColor
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Max Intensity: 4096
+          Min Color: 0; 0; 0
+          Min Intensity: 0
+          Name: scan_matched_points2
+          Position Transformer: XYZ
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.009999999776482582
+          Style: Boxes
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            Filter size: 10
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /scan_matched_points2
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
+        - Class: rviz_default_plugins/MarkerArray
+          Enabled: false
+          Name: Trajectories
+          Namespaces:
+            {}
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /trajectory_node_list
+          Value: false
+        - Class: rviz_default_plugins/MarkerArray
+          Enabled: false
+          Name: Constraints
+          Namespaces:
+            {}
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /constraint_list
+          Value: false
+        - Class: rviz_default_plugins/MarkerArray
+          Enabled: false
+          Name: Landmark Poses
+          Namespaces:
+            {}
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /landmark_poses_list
+          Value: false
+      Enabled: true
+      Name: Cartographer
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz_default_plugins/Path
+      Color: 0; 255; 255
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.05000000074505806
+      Name: Exploration Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /exploration_path
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: map
+    Frame Rate: 10
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+      Line color: 128; 128; 0
+    - Class: rviz_default_plugins/SetGoal
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /move_base_simple/goal
+    - Class: rviz_default_plugins/PublishPoint
+      Single click: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /clicked_point
+    - Class: rviz_default_plugins/SetInitialPose
+      Covariance x: 0.25
+      Covariance y: 0.25
+      Covariance yaw: 0.06853891909122467
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: initialpose
+  Transformation:
+    Current:
+      Class: rviz_default_plugins/TF
+  Value: true
+  Views:
+    Current:
+      Angle: 0
+      Class: rviz_default_plugins/TopDownOrtho
+      Enable Stereo Rendering:
+        Stereo Eye Separation: 0.05999999865889549
+        Stereo Focal Distance: 1
+        Swap Stereo Eyes: false
+        Value: false
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.009999999776482582
+      Scale: 119.26066589355469
+      Target Frame: <Fixed Frame>
+      Value: TopDownOrtho (rviz_default_plugins)
+      X: 0.0023878198117017746
+      Y: -0.17037495970726013
+    Saved: ~
+Window Geometry:
+  Displays:
+    collapsed: false
+  Height: 576
+  Hide Left Dock: false
+  Hide Right Dock: true
+  QMainWindow State: 000000ff00000000fd00000004000000000000017a000001e6fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000001e6000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f00000236fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d00000236000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004420000003efc0100000002fb0000000800540069006d00650100000000000004420000000000000000fb0000000800540069006d00650100000000000004500000000000000000000002db000001e600000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Selection:
+    collapsed: false
+  Tool Properties:
+    collapsed: false
+  Views:
+    collapsed: true
+  Width: 1115
+  X: 164
+  Y: 106
 ```
 
-2. **Launch the Gazebo simulation environment:**
+**Step 3:** Save and exit (Ctrl+O, Enter, Ctrl+X)
+
+### What This Configuration Includes
+
+✅ **Exploration Path Visualization** - Cyan path showing frontier navigation in real-time  
+✅ **SLAM Displays** - Cartographer scan matching and point clouds  
+✅ **Navigation Displays** - Global/local costmaps and planned paths  
+✅ **Sensor Data** - LaserScan and odometry visualization  
+✅ **Transform Tree** - Robot frame hierarchy visualization  
+
+### Verify It Works
 
 ```bash
-export TURTLEBOT3_MODEL=burger
-ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
-```
-
-3. **View the environment map in RViz:**
-
-```bash
+jrviz2
+# or
 rviz2 -d ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz
 ```
 
-4. **Run the autonomous exploration package:**
-
-```bash
-ros2 run autonomous_exploration control
-```
-
-# CI/CD & Automated AI Code Review & Changelog Infrastructure
-
-This repository uses a custom CI/CD pipeline powered by [Qodo PR-Agent](https://github.com/qodo-ai/pr-agent) and Google's **Gemini 2.5 Flash** model to automate pull request management and documentation, standardize our release documentation, enforce Semantic Versioning (SemVer 2.0.0), and reduce administrative overhead. 
-
-Whenever a new Pull Request is opened, the pipeline automatically executes the following suite:
-1. **Hardware-Aware Commit Scraping:** Bypasses Git's "binary blindspot" by scraping local git history to document physical CAD changes (`.SLDPRT`, `.STL`, etc.) before the AI runs.
-2. **Auto-Describe:** Analyzes the code diff and commit history to automatically write a comprehensive PR Title and Description.
-3. **Auto-Review & Improve:** Scans the code for bugs and leaves actionable, inline code suggestions.
-4. **Auto-Changelog:** Generates a strict, version-bumped `CHANGELOG.md` block based on your branch's features and fixes.
-
-
-## 🛠️ The Developer Workflow
-
-To ensure our documentation remains perfectly synced with our codebase, all team members must follow this workflow when merging code into the `main` branch.
-
-### 1. Write Conventional Commits
-Make sure you are editing on your **LOCAL BRANCH** and not the `main` branch!
-
-The AI agent calculates the next version number strictly based on the prefixes used in your commit messages and PR title. You **must** use one of the following prefixes:
-
-* `feat: ` (New features, architectural additions, nodes. 'MAJOR' is to be included in the commit message for MAJOR versioning, else it defaults to MINOR versioning)
-* `fix: ` (Bug fixes, path resolutions, logic errors)
-* `docs: ` (Updates to README, comments, or documentation)
-* `test: ` (Adding or updating tests/simulations)
-
-for hardware/CAD changes: **BE DESCRIPTIVE** in your commit messages as the CHANGELOG.md will be updated based on your commit messages.
-
-*Example: `feat(navigation): integrate frontier exploration algorithm`*
-
-### 2. Open a Pull Request
-
-Push your code to your **LOCAL BRANCH** and push that branch to GitHub.
-```bash
-git push origin [local_branch_name]
-```
-Open a Pull Request against `main`. 
-if you have Github CLI:
-```bash
-gh pr create --fill
-```
-(auto-fills latest commit message as title)
-* **The Auto-Review & changelog update:** The GitHub Action will immediately wake up, analyze your code diffs, and post a summary of your changes as a comment on the PR. **VERIFY** the documentation on your own and make necessary edits.
-
-**Manual Commands:**
-If you need the AI to re-run a specific task, you can type any of these commands as a standard comment in your Pull Request thread:
-* `/update_changelog` - Regenerates the changelog.
-* `/describe` - Regenerates the PR description.
-* `/review` - Re-runs the high-level review.
-* `/improve` - Scans for new inline code improvements.
-* `/ask [question]` - Ask the AI a specific question about the PR's code.
-
-## 🏗️ AI Pipeline Architecture
-
-This repository utilizes a highly customized, hardware-aware CI/CD pipeline, reads binary CAD diffs (e.g., SolidWorks, STL files) by using a pre-processing commit scraper combined with a native Python implementation of [Qodo PR-Agent](https://github.com/qodo-ai/pr-agent), powered by **Google Gemini 2.5 Flash**.
-
-### Data Flow Diagram
-
-```mermaid
-sequenceDiagram
-    actor Developer
-    participant GitHub as GitHub Actions
-    participant Scraper as Context Scraper (Bash)
-    participant Agent as PR-Agent CLI (Python)
-    participant Gemini as Gemini 2.5 Flash
-
-    Developer->>GitHub: Open PR or Post Comment
-    GitHub->>Scraper: Trigger Workflow (fetch-depth: 0)
-    Scraper->>GitHub: Read git log & inject commits into PR Body
-    GitHub->>Agent: Initialize raw Python environment
-    Agent->>Gemini: Send code diff + commit history payload
-    Note right of Agent: 1,000,000 token limit override
-    Gemini-->>Agent: Return generated reviews & changelog
-    Agent->>GitHub: Update PR Description, Post Reviews, Update CHANGELOG.md
+You should now see all displays including the **cyan Exploration Path** in real-time!

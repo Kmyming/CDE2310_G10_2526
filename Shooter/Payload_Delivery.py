@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-from turtle import delay
-
 import rclpy
 from rclpy.node import Node
 from tf2_msgs.msg import TFMessage
-import RPi.GPIO as GPIO
+from std_msgs.msg import Bool
+import threading
 import time
-
+import pigpio
+import Pinion_Rotation as pinion
 
 class ArucoTFListener(Node):
     def __init__(self):
@@ -24,25 +24,45 @@ class ArucoTFListener(Node):
             10
         )
 
+        # Publisher for /launch_done
+        self.launch_done_pub = self.create_publisher(Bool, '/launch_done', 10)
+
         # optional storage for latest transform of each marker
         self.transforms_by_marker = {}
 
         self.get_logger().info(f"Subscribed to {self.topic}")
 
-        # GPIO setup for Gates control
-        GPIO.setmode(GPIO.BCM)
-        self.gate = 17
-        self.rack = 27
-        GPIO.setup(self.rack, GPIO.OUT, initial=GPIO.LOW)
-        self.gate_delay = 0.5
-        self.rack_delay = 0.3
-        self.p = GPIO.PWM(self.gate, 50)
-        self.p.start(2.5) #start at 0 degrees
+        # pigpio setup for SG90 gate servo
+        self.gate_pin = 12
+        self.gate_open_us = 500
+        self.gate_close_us = 1500
+        self.gate_settle_s = 0.25
+
+        # Overlap timing controls between MG90 engage and SG90 gate open.
+        # 0.0  -> start together
+        # >0.0 -> SG90 gate open starts after MG90 engage begins
+        # <0.0 -> SG90 gate open starts before MG90 engage begins
+        self.engage_to_gate_open_offset_s = 0.0
+        self.ball_drop_s = 0.25
+
+        # Delay from SG90 close completion to MG90 disengage/release.
+        self.close_to_release_s = 0.08
+
+        self.gate_pi = pigpio.pi()
+        if not self.gate_pi.connected:
+            raise RuntimeError("Could not connect to pigpiod for SG90 gate control")
+        self.gate_pi.set_servo_pulsewidth(self.gate_pin, self.gate_close_us)
+
+        # Global counter shared across all delivery modes.
+        self.global_shot_count = 0
 
         self.dynamic_counter = 0 #Counter for dynamic delivery, to ensure we shoot only 3 times when the marker is in the correct position
 
 
     def cb(self, msg: TFMessage):
+        if self.status != "Idle":
+            return
+
         for transform_stamped in msg.transforms:
             frame_id = transform_stamped.header.frame_id
             child_frame_id = transform_stamped.child_frame_id
@@ -79,13 +99,17 @@ class ArucoTFListener(Node):
             if marker_id == "5":
                 self.status = "Engaged"
                 self.static_delivery(tf_data)
+                return
 
             elif marker_id == "10":
+                self.status = "Engaged"
                 self.dynamic_delivery(tf_data)
+                return
 
             elif marker_id == "21":
                 self.status = "Engaged"
                 self.bonus_delivery(tf_data)
+                return
 
 
     def extract_marker_id(self, child_frame_id: str):
@@ -117,7 +141,7 @@ class ArucoTFListener(Node):
         # -------- First Delivery --------
         now = time.time()
         self.shoot()
-        while time.time() - now < 1:
+        while time.time() - now < delivery2_delay:
             pass
 
         # -------- Second Delivery --------
@@ -129,13 +153,24 @@ class ArucoTFListener(Node):
         # -------- Third Delivery --------
         self.shoot()
 
-        
+        # Publish to /launch_done
+        msg = Bool()
+        msg.data = True
+        self.launch_done_pub.publish(msg)
 
     def dynamic_delivery(self, tf_data):
-        while self.dynamic_counter < 3:
-            if tf_data["tx"] < 0.5 and tf_data["tx"] > -0.5:
-                self.shoot()
-                self.dynamic_counter += 1
+        if -0.5 < tf_data["tx"] < 0.5 and self.dynamic_counter < 3:
+            self.shoot()
+            self.dynamic_counter += 1
+
+        if self.dynamic_counter < 3:
+            self.status = "Idle"
+            return
+
+        # Publish to /launch_done
+        msg = Bool()
+        msg.data = True
+        self.launch_done_pub.publish(msg)
 
 
 
@@ -152,32 +187,58 @@ class ArucoTFListener(Node):
             while time.time() - now < delivery_delay:
                 pass
 
+        # Publish to /launch_done
+        msg = Bool()
+        msg.data = True
+        self.launch_done_pub.publish(msg)
 
+
+
+    def open_gate(self):
+        self.gate_pi.set_servo_pulsewidth(self.gate_pin, self.gate_open_us)
+        time.sleep(self.gate_settle_s)
+
+    def close_gate(self):
+        self.gate_pi.set_servo_pulsewidth(self.gate_pin, self.gate_close_us)
+        time.sleep(self.gate_settle_s)
 
     def shoot(self):
-        self.set_servo_angle(90)  # Open Gate
-        time.sleep(self.gate_delay)
-        self.set_servo_angle(0)   # Close Gate
-        GPIO.output(self.rack, GPIO.HIGH)  # Push Rack
-        time.sleep(self.rack_delay)
-        GPIO.output(self.rack, GPIO.LOW)   # Pull Rack
+        cycle_index = self.global_shot_count
+        self.get_logger().info(f"Starting shot cycle {cycle_index + 1}")
 
-    def set_servo_angle(self, angle):
-        """
-        Calculates duty cycle for specific angle and stops PWM to prevent jitter.
-        Logic based on CDE2310 course provided material.
-        """
-        if angle < 0: angle = 0
-        elif angle > 180: angle = 180
+        # Start rack pullback and gate open with configurable overlap offset.
+        engage_thread = threading.Thread(target=pinion.engage_rack, args=(cycle_index,))
+        offset = self.engage_to_gate_open_offset_s
+        if offset >= 0.0:
+            engage_thread.start()
+            if offset > 0.0:
+                time.sleep(offset)
+            self.open_gate()
+        else:
+            self.open_gate()
+            time.sleep(abs(offset))
+            engage_thread.start()
 
-        duty_cycle = (angle / 18.0) + 2.5
-        self.p.ChangeDutyCycle(duty_cycle)
-        
-        # Allow time for mechanical arm to move
-        time.sleep(0.5)
-        
-        # SET TO 2.5 TO STOP JITTER: This kills the signal so the servo stays still
-        self.p.ChangeDutyCycle(2.5)
+        engage_thread.join()
+
+        # Gate stays open briefly to allow ball drop into launcher.
+        time.sleep(self.ball_drop_s)
+        self.close_gate()
+        time.sleep(self.close_to_release_s)
+
+        # Release rack only after gate is safely closed.
+        pinion.disengage_rack(cycle_index)
+
+        # Advance the global shot counter only after a successful launch cycle.
+        self.global_shot_count += 1
+    def destroy_node(self):
+        try:
+            self.gate_pi.set_servo_pulsewidth(self.gate_pin, 0)
+            self.gate_pi.stop()
+        except Exception:
+            pass
+        pinion.shutdown()
+        super().destroy_node()
 
 def main():
     rclpy.init()
