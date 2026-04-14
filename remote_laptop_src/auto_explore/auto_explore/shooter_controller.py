@@ -36,8 +36,17 @@ class ShooterController(Node):
         self.declare_parameter('rack_hold_duration_s', 0.75)
         self.declare_parameter('rack_cycle_pause_s', 0.35)
         self.declare_parameter('dynamic_poll_interval_s', 0.05)
+
+        # Legacy params retained for compatibility.
         self.declare_parameter('ultrasonic_echo_timeout_s', 0.03)
         self.declare_parameter('ultrasonic_poll_sleep_s', 0.0005)
+
+        # New ultrasonic filtering params from the tested node.
+        self.declare_parameter('ultrasonic_sample_count', 5)
+        self.declare_parameter('ultrasonic_sample_gap_s', 0.06)
+        self.declare_parameter('ultrasonic_min_distance_m', 0.02)
+        self.declare_parameter('ultrasonic_max_distance_m', 4.0)
+        self.declare_parameter('ultrasonic_temperature_c', 25.0)
 
         self.enable_hardware = bool(self.get_parameter('enable_hardware').value)
         self.simulated_shot_delay_sec = float(self.get_parameter('simulated_shot_delay_sec').value)
@@ -47,22 +56,45 @@ class ShooterController(Node):
         self.rack_pin = int(self.get_parameter('rack_pin').value)
         self.ultrasonic_trigger_pin = int(self.get_parameter('ultrasonic_trigger_pin').value)
         self.ultrasonic_echo_pin = int(self.get_parameter('ultrasonic_echo_pin').value)
-        self.ultrasonic_distance_threshold_m = float(self.get_parameter('ultrasonic_distance_threshold_m').value)
-        self.ultrasonic_simulated_distance_m = float(self.get_parameter('ultrasonic_simulated_distance_m').value)
+        self.ultrasonic_distance_threshold_m = float(
+            self.get_parameter('ultrasonic_distance_threshold_m').value
+        )
+        self.ultrasonic_simulated_distance_m = float(
+            self.get_parameter('ultrasonic_simulated_distance_m').value
+        )
         self.gate_open_us = int(self.get_parameter('gate_open_us').value)
         self.gate_close_us = int(self.get_parameter('gate_close_us').value)
         self.gate_settle_s = float(self.get_parameter('gate_settle_s').value)
-        self.engage_to_gate_open_offset_s = float(self.get_parameter('engage_to_gate_open_offset_s').value)
+        self.engage_to_gate_open_offset_s = float(
+            self.get_parameter('engage_to_gate_open_offset_s').value
+        )
         self.ball_drop_s = float(self.get_parameter('ball_drop_s').value)
         self.close_to_release_s = float(self.get_parameter('close_to_release_s').value)
         self.engage_profile = str(self.get_parameter('engage_profile').value).strip().lower()
-        self.disengage_trim_per_extra_cycle_s = float(self.get_parameter('disengage_trim_per_extra_cycle_s').value)
-        self.disengage_trim_per_extra_cycle_high_s = float(self.get_parameter('disengage_trim_per_extra_cycle_high_s').value)
+        self.disengage_trim_per_extra_cycle_s = float(
+            self.get_parameter('disengage_trim_per_extra_cycle_s').value
+        )
+        self.disengage_trim_per_extra_cycle_high_s = float(
+            self.get_parameter('disengage_trim_per_extra_cycle_high_s').value
+        )
         self.rack_hold_duration_s = float(self.get_parameter('rack_hold_duration_s').value)
         self.rack_cycle_pause_s = float(self.get_parameter('rack_cycle_pause_s').value)
         self.dynamic_poll_interval_s = float(self.get_parameter('dynamic_poll_interval_s').value)
+
         self.ultrasonic_echo_timeout_s = float(self.get_parameter('ultrasonic_echo_timeout_s').value)
         self.ultrasonic_poll_sleep_s = float(self.get_parameter('ultrasonic_poll_sleep_s').value)
+
+        self.ultrasonic_sample_count = int(self.get_parameter('ultrasonic_sample_count').value)
+        self.ultrasonic_sample_gap_s = float(self.get_parameter('ultrasonic_sample_gap_s').value)
+        self.ultrasonic_min_distance_m = float(
+            self.get_parameter('ultrasonic_min_distance_m').value
+        )
+        self.ultrasonic_max_distance_m = float(
+            self.get_parameter('ultrasonic_max_distance_m').value
+        )
+        self.ultrasonic_temperature_c = float(
+            self.get_parameter('ultrasonic_temperature_c').value
+        )
 
         self._engage_profiles = {
             'mild': {'engage_us': 1000, 'engage_time_s': 0.40},
@@ -84,6 +116,13 @@ class ShooterController(Node):
         self._pigpio_ready = False
         self._global_shot_count = 0
 
+        # Ultrasonic callback state
+        self._echo_cb = None
+        self._echo_event = threading.Event()
+        self._echo_start_tick = None
+        self._echo_end_tick = None
+        self._measure_lock = threading.Lock()
+
         if self.enable_hardware:
             self._init_pigpio()
         else:
@@ -95,7 +134,9 @@ class ShooterController(Node):
 
             self._pi = pigpio.pi(self.pigpiod_host, self.pigpiod_port)
             if not self._pi.connected:
-                raise RuntimeError(f'Could not connect to pigpiod at {self.pigpiod_host}:{self.pigpiod_port}')
+                raise RuntimeError(
+                    f'Could not connect to pigpiod at {self.pigpiod_host}:{self.pigpiod_port}'
+                )
 
             self._pi.set_mode(self.gate_pin, pigpio.OUTPUT)
             self._pi.set_mode(self.rack_pin, pigpio.OUTPUT)
@@ -105,12 +146,31 @@ class ShooterController(Node):
             self._pi.write(self.ultrasonic_trigger_pin, 0)
             self._pi.set_servo_pulsewidth(self.gate_pin, self.gate_close_us)
             self._pi.set_servo_pulsewidth(self.rack_pin, 0)
+
+            self._echo_cb = self._pi.callback(
+                self.ultrasonic_echo_pin,
+                pigpio.EITHER_EDGE,
+                self._echo_callback
+            )
+
             self._pigpio_ready = True
             self.get_logger().info('Shooter pigpio initialized.')
         except Exception as exc:
             self.enable_hardware = False
             self._pigpio_ready = False
-            self.get_logger().error(f'Failed to initialize pigpio, falling back to simulated mode: {exc}')
+            self.get_logger().error(
+                f'Failed to initialize pigpio, falling back to simulated mode: {exc}'
+            )
+
+    def _echo_callback(self, gpio, level, tick):
+        _ = gpio
+        if level == 1:
+            self._echo_start_tick = tick
+            self._echo_end_tick = None
+            self._echo_event.clear()
+        elif level == 0 and self._echo_start_tick is not None:
+            self._echo_end_tick = tick
+            self._echo_event.set()
 
     def trigger_callback(self, msg: String):
         shoot_type = (msg.data or 'auto').strip().lower()
@@ -150,7 +210,9 @@ class ShooterController(Node):
                 self._busy = False
 
             if success:
-                self.get_logger().info(f'Shooter cycle complete (type={shoot_type}), published /shoot_done=True')
+                self.get_logger().info(
+                    f'Shooter cycle complete (type={shoot_type}), published /shoot_done=True'
+                )
 
     def _static_delivery(self):
         delivery2_delay = 0.2
@@ -168,7 +230,12 @@ class ShooterController(Node):
         shot_count = 0
         while shot_count < 3:
             distance_m = self._read_ultrasonic_distance_m()
+
             if distance_m is not None and distance_m <= self.ultrasonic_distance_threshold_m:
+                shot_number = shot_count + 1
+                self.get_logger().info(
+                    f'Dynamic shot {shot_number}/3 triggered at {distance_m:.3f} m'
+                )
                 self._shoot_once_hardware()
                 shot_count += 1
                 continue
@@ -184,7 +251,6 @@ class ShooterController(Node):
 
     def _shoot_once_hardware(self):
         cycle_index = self._global_shot_count
-        self.get_logger().info(f'Starting shot cycle {cycle_index + 1}')
 
         engage_thread = threading.Thread(target=self._engage_rack, args=(cycle_index,))
         offset = self.engage_to_gate_open_offset_s
@@ -247,35 +313,74 @@ class ShooterController(Node):
         self._pi.set_servo_pulsewidth(self.gate_pin, self.gate_close_us)
         time.sleep(self.gate_settle_s)
 
+    def _speed_of_sound_m_s(self) -> float:
+        return 331.3 + (0.606 * self.ultrasonic_temperature_c)
+
+    def _read_one_ultrasonic_sample_m(self):
+        if not (self.enable_hardware and self._pigpio_ready):
+            return self.ultrasonic_simulated_distance_m
+
+        import pigpio  # pylint: disable=import-outside-toplevel
+
+        with self._measure_lock:
+            self._echo_start_tick = None
+            self._echo_end_tick = None
+            self._echo_event.clear()
+
+            self._pi.write(self.ultrasonic_trigger_pin, 0)
+            time.sleep(0.000002)
+
+            self._pi.gpio_trigger(self.ultrasonic_trigger_pin, 10, 1)
+
+            got_echo = self._echo_event.wait(timeout=self.ultrasonic_echo_timeout_s)
+            if not got_echo or self._echo_start_tick is None or self._echo_end_tick is None:
+                return None
+
+            pulse_width_us = pigpio.tickDiff(self._echo_start_tick, self._echo_end_tick)
+            duration_s = pulse_width_us / 1_000_000.0
+            distance_m = (duration_s * self._speed_of_sound_m_s()) / 2.0
+
+            if not (self.ultrasonic_min_distance_m <= distance_m <= self.ultrasonic_max_distance_m):
+                return None
+
+            return distance_m
+
     def _read_ultrasonic_distance_m(self):
         if not (self.enable_hardware and self._pigpio_ready):
             return self.ultrasonic_simulated_distance_m
 
-        self._pi.gpio_trigger(self.ultrasonic_trigger_pin, 10, 1)
-        read_start = time.monotonic()
-        while self._pi.read(self.ultrasonic_echo_pin) == 0:
-            if time.monotonic() - read_start > self.ultrasonic_echo_timeout_s:
-                return None
-            time.sleep(self.ultrasonic_poll_sleep_s)
+        samples = []
 
-        pulse_start = time.monotonic()
+        for _ in range(max(1, self.ultrasonic_sample_count)):
+            value = self._read_one_ultrasonic_sample_m()
+            if value is not None:
+                samples.append(value)
+            time.sleep(self.ultrasonic_sample_gap_s)
 
-        while self._pi.read(self.ultrasonic_echo_pin) == 1:
-            if time.monotonic() - pulse_start > self.ultrasonic_echo_timeout_s:
-                return None
-            time.sleep(self.ultrasonic_poll_sleep_s)
+        if not samples:
+            return None
 
-        pulse_end = time.monotonic()
+        samples.sort()
+        n = len(samples)
+        if n % 2 == 1:
+            median = samples[n // 2]
+        else:
+            median = 0.5 * (samples[n // 2 - 1] + samples[n // 2])
 
-        duration = pulse_end - pulse_start
-        self.get_logger().info(f"Ultrasonic distance: {duration * 343.0 / 2.0:.2f} m")
-        return (duration * 343.0) / 2.0
+        return median
 
     def destroy_node(self):
+        if self._echo_cb is not None:
+            try:
+                self._echo_cb.cancel()
+            except Exception:
+                pass
+
         if self._pi is not None:
             try:
                 self._pi.set_servo_pulsewidth(self.gate_pin, 0)
                 self._pi.set_servo_pulsewidth(self.rack_pin, 0)
+                self._pi.write(self.ultrasonic_trigger_pin, 0)
                 self._pi.stop()
             except Exception:
                 pass
