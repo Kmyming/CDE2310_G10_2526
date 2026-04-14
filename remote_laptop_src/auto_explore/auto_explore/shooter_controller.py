@@ -177,6 +177,8 @@ class ShooterController(Node):
         if shoot_type not in ('static', 'dynamic', 'bonus', 'auto'):
             shoot_type = 'auto'
 
+        self.get_logger().info(f"Received /shoot_type={shoot_type}, starting shooter cycle")
+
         with self._lock:
             if self._busy:
                 self.get_logger().warn('Shooter busy; ignoring trigger')
