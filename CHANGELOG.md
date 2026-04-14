@@ -1,3 +1,10 @@
+## [2.11.0] - 2026-04-14
+Implemented a new post-launch backup maneuver to prevent collisions and adjusted the robot's yaw sweep rotation speed.
+
+### Added / Changed
+- feat(state): Implemented a new "BACKUP" state in `mission_controller.py` that triggers after a launch sequence, causing the robot to move backward at -0.1 m/s for 2 seconds before returning to exploration.
+- feat(auto_explore): Reduced the yaw sweep angular velocity in `exploration_controller.py` from `math.pi / 2` (90 deg/s) to `math.pi / 6` (30 deg/s).
+
 ## [2.10.1] - 2026-04-14
 ### Fixed
 - fix(FSM): Removed the `/zone` topic publisher and its associated logic from `mission_controller.py`.
