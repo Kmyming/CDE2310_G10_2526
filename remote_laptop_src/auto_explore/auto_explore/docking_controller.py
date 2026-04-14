@@ -59,7 +59,7 @@ class DockingController(Node):
 
         # Thresholds
         self.tx_align_tolerance = 0.01     # “face marker exactly”
-        self.mid_tz_threshold = 0.50       # first straight approach limit
+        self.mid_tz_threshold = 0.30       # first straight approach limit
         self.final_tz_threshold = 0.10     # final docking stop
         self.theta_min_for_manoeuvre = math.radians(2.0)
         self.tx_final_align_tolerance = 0.05
