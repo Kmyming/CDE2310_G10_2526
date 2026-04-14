@@ -468,7 +468,7 @@ class navigationControl(Node):
                         elapsed = time.time() - self.sweep_start_time
                         if elapsed < self.sweep_duration:
                             v = 0.0
-                            w = math.pi / 2  # Rotate at ~90 deg/s
+                            w = math.pi / 6  # Rotate at ~30 deg/s (slower)
                         else:
                             # Sweep complete, return to exploration
                             v = 0.0
