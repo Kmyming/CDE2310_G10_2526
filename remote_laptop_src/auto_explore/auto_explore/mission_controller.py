@@ -31,7 +31,6 @@ class FSMNode(Node):
         # Publishers
         self.state_pub = self.create_publisher(String, '/states', 10)
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.zone_pub = self.create_publisher(String, '/zone', 10)
         self.shoot_type_pub = self.create_publisher(String, '/shoot_type', 10)
 
         # Subscribers (state triggers)
@@ -88,11 +87,6 @@ class FSMNode(Node):
         msg = String()
         msg.data = new_state
         self.state_pub.publish(msg)
-
-        if new_state in ["DOCK", "LAUNCH"] and self.current_zone is not None:
-            zone_msg = String()
-            zone_msg.data = self.current_zone
-            self.zone_pub.publish(zone_msg)
 
         if new_state != "LAUNCH":
             self.shoot_requested = False
