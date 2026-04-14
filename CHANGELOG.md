@@ -1,3 +1,10 @@
+## [2.11.1] - 2026-04-14
+Ensured the shooter node has sufficient time to complete its operation during the launch sequence.
+
+### Fixed
+- fix(FSM): Implemented a minimum duration for the 'LAUNCH' state in `mission_controller.py` using `launch_min_duration_sec` to ensure the shooter node completes its cycle.
+- fix(FSM): Refined 'LAUNCH' state management in `mission_controller.py` to correctly handle `launch_completion_pending` and `launch_start_time` for robust shooter operation.
+
 ## [2.11.0] - 2026-04-14
 Implemented a new post-launch backup maneuver to prevent collisions and adjusted the robot's yaw sweep rotation speed.
 
