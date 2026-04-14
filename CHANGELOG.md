@@ -1,3 +1,9 @@
+## [2.10.0] - 2026-04-14
+Implemented a new post-waypoint behavior for the robot to perform a yaw sweep, enhancing its ability to locate objects after reaching a destination.
+
+### Added / Changed
+- feat(auto_explore): Added yaw sweep functionality to `exploration_controller.py`, enabling the robot to perform a 360-degree rotation after reaching a waypoint to search for Aruco codes.
+
 ## [2.9.6] - 2026-04-14
 Integrated a robust, filtered ultrasonic sensing system for improved dynamic payload delivery.
 
