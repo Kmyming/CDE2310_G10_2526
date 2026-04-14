@@ -405,6 +405,9 @@ class navigationControl(Node):
         self.exploration_done_announced = False
         self.path = None
         self.i = 0
+        self.sweep_mode = False
+        self.sweep_start_time = None
+        self.sweep_duration = 3.0  # Duration of yaw sweep in seconds
 
         threading.Thread(target=self.exp, daemon=True).start()
 
@@ -453,11 +456,27 @@ class navigationControl(Node):
                 else:
                     v, w, self.i = pure_pursuit(self.x, self.y, self.yaw, self.path, self.i)
                     if abs(self.x - self.path[-1][0]) < target_error and abs(self.y - self.path[-1][1]) < target_error:
-                        v = 0.0
-                        w = 0.0
-                        self.exploration_mode = True
-                        if hasattr(self, 't') and self.t.is_alive():
-                            self.t.join()
+                        if not self.sweep_mode:
+                            # Start yaw sweep
+                            self.sweep_mode = True
+                            self.sweep_start_time = time.time()
+                            self.get_logger().info("[Navigation] Reached waypoint, starting yaw sweep")
+                            if hasattr(self, 't') and self.t.is_alive():
+                                self.t.join()
+                        
+                        # Execute yaw sweep
+                        elapsed = time.time() - self.sweep_start_time
+                        if elapsed < self.sweep_duration:
+                            v = 0.0
+                            w = math.pi / 6  # Rotate at ~30 deg/s (slower)
+                        else:
+                            # Sweep complete, return to exploration
+                            v = 0.0
+                            w = 0.0
+                            self.sweep_mode = False
+                            self.exploration_mode = True
+                    else:
+                        self.sweep_mode = False
 
                     twist.linear.x = v
                     twist.angular.z = w
