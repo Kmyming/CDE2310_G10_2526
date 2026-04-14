@@ -3,6 +3,7 @@ from rclpy.node import Node
 from std_msgs.msg import String, Bool
 from geometry_msgs.msg import Twist
 from tf2_msgs.msg import TFMessage
+import time
 
 class FSMNode(Node):
     def __init__(self):
@@ -16,6 +17,9 @@ class FSMNode(Node):
         self.map_explored = False
         self.shoot_requested = False
         self.launch_completion_consumed = False
+        self.launch_completion_pending = False
+        self.launch_start_time = None
+        self.launch_min_duration_sec = 15.0
 
         # Zone tracking
         self.current_zone = None
@@ -94,9 +98,16 @@ class FSMNode(Node):
             zone_msg.data = self.current_zone
             self.zone_pub.publish(zone_msg)
 
-        if new_state != "LAUNCH":
+        if new_state == "LAUNCH":
+            self.launch_start_time = time.monotonic()
+            self.launch_completion_pending = False
             self.shoot_requested = False
             self.launch_completion_consumed = False
+        else:
+            self.shoot_requested = False
+            self.launch_completion_consumed = False
+            self.launch_completion_pending = False
+            self.launch_start_time = None
 
     # FSM loop
     def state_machine_loop(self):
@@ -118,6 +129,14 @@ class FSMNode(Node):
                     trigger.data = 'auto'
                 self.shoot_type_pub.publish(trigger)
                 self.shoot_requested = True
+                if self.launch_start_time is None:
+                    self.launch_start_time = time.monotonic()
+                self.get_logger().info(f"[FSM] Shooter trigger sent ({trigger.data})")
+
+            if self.launch_completion_pending and self.launch_start_time is not None:
+                elapsed = time.monotonic() - self.launch_start_time
+                if elapsed >= self.launch_min_duration_sec:
+                    self._handle_launch_completion()
 
         elif self.state == "END":
             self.timer.cancel()
@@ -152,10 +171,16 @@ class FSMNode(Node):
         self.change_state('EXPLORE')
 
     def shoot_done_callback(self, msg: Bool):
-        self._handle_launch_completion(msg)
-
-    def _handle_launch_completion(self, msg: Bool):
         if self.state != 'LAUNCH' or not msg.data:
+            return
+
+        self.launch_completion_pending = True
+        if self.launch_start_time is None:
+            self.launch_start_time = time.monotonic()
+        self.get_logger().info('[FSM] Shooter completion received, waiting for launch hold to finish')
+
+    def _handle_launch_completion(self):
+        if self.state != 'LAUNCH':
             return
 
         if self.launch_completion_consumed:
@@ -163,6 +188,7 @@ class FSMNode(Node):
             return
 
         self.launch_completion_consumed = True
+        self.launch_completion_pending = False
 
         if self.current_zone in self.visited_markers:
             self.visited_markers[self.current_zone] = True
