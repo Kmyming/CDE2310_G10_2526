@@ -1,3 +1,7 @@
+## [2.10.1] - 2026-04-14
+### Fixed
+- fix(FSM): Removed the `/zone` topic publisher and its associated logic from `mission_controller.py`.
+
 ## [2.10.0] - 2026-04-14
 Implemented a new post-waypoint behavior for the robot to perform a yaw sweep, enhancing its ability to locate objects after reaching a destination.
 
