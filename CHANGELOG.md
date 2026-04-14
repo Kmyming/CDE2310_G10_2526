@@ -1,3 +1,12 @@
+## [2.9.6] - 2026-04-14
+Integrated a robust, filtered ultrasonic sensing system for improved dynamic payload delivery.
+
+### Fixed
+- fix(shooter): Implemented a new callback-based ultrasonic measurement system in `shooter_controller.py` using `pigpio.EITHER_EDGE` callbacks for improved accuracy.
+- fix(shooter): Added new parameters for ultrasonic filtering and calibration: `ultrasonic_sample_count`, `ultrasonic_sample_gap_s`, `ultrasonic_min_distance_m`, `ultrasonic_max_distance_m`, and `ultrasonic_temperature_c`.
+- fix(shooter): Implemented median filtering for ultrasonic distance readings and a temperature-compensated `_speed_of_sound_m_s` calculation.
+- fix(shooter): Ensured proper cleanup of the ultrasonic callback and `ultrasonic_trigger_pin` in `destroy_node`.
+
 ## [2.9.5] - 2026-04-13
 Tuned various shooter parameters and refined timing logic for improved static payload delivery.
 
