@@ -1,3 +1,13 @@
+## [2.13.2] - 2026-04-15
+Finalized fine-tuned shooting parameters for improved performance and updated Aruco marker detection.
+
+### Fixed
+- fix(shooter): Fine-tuned multiple shooting parameters in `shooter_controller.py`, including `gate_settle_s` to `0.225`, `ball_drop_s` to `0.225`, `disengage_trim_per_extra_cycle_s` to `0.015`, `disengage_trim_per_extra_cycle_high_s` to `0.015`, `rack_hold_duration_s` to `0.2`, `rack_cycle_pause_s` to `0.3`, `delivery2_delay` to `0.1`, `delivery3_delay` to `7.1`, and adjusted `engage_profiles` values. The default `engage_profile` in `_get_engage_time_for_cycle` was also changed to `mild`.
+- fix(auto_explore): Adjusted the `marker_size_m` parameter in `pose_publisher.py` from `0.053` to `0.049` for improved Aruco marker detection accuracy.
+
+### Documentation
+- docs(shooter): Added instructions to `README.md` for activating the shooter node using `ros2 topic pub` commands for static and dynamic shooting.
+
 ## [2.13.1] - 2026-04-15
 ### Fixed
 - fix(docking): Implemented new watchdog timers (30s marker invisibility, 45s state timeout) in `docking_controller.py` to prevent the robot from getting stuck during docking.
