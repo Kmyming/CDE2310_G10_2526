@@ -1,3 +1,9 @@
+## [2.13.1] - 2026-04-15
+### Fixed
+- fix(docking): Implemented new watchdog timers (30s marker invisibility, 45s state timeout) in `docking_controller.py` to prevent the robot from getting stuck during docking.
+- fix(docking): Refactored state transitions in `docking_controller.py` to use a dedicated `set_state` method, ensuring consistent state management and watchdog resets.
+- fix(docking): Renamed the `MoveOnAruco` node to `DockingController` and adjusted `mid_tz_threshold` to 0.50 in `docking_controller.py`.
+
 ## [2.13.0] - 2026-04-15
 Streamlined exploration by removing the yaw rotation sweep at waypoints and introduced a new tight maze simulation environment.
 
