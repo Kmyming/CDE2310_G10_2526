@@ -26,15 +26,15 @@ class ShooterController(Node):
         self.declare_parameter('ultrasonic_simulated_distance_m', 0.15)
         self.declare_parameter('gate_open_us', 500)
         self.declare_parameter('gate_close_us', 1000)
-        self.declare_parameter('gate_settle_s', 0.3)
+        self.declare_parameter('gate_settle_s', 0.225)
         self.declare_parameter('engage_to_gate_open_offset_s', 0.35)
-        self.declare_parameter('ball_drop_s', 0.3)
+        self.declare_parameter('ball_drop_s', 0.225)
         self.declare_parameter('close_to_release_s', 0.03125)
         self.declare_parameter('engage_profile', 'medium')
-        self.declare_parameter('disengage_trim_per_extra_cycle_s', 0.075)
-        self.declare_parameter('disengage_trim_per_extra_cycle_high_s', 0.1)
-        self.declare_parameter('rack_hold_duration_s', 0.75)
-        self.declare_parameter('rack_cycle_pause_s', 0.35)
+        self.declare_parameter('disengage_trim_per_extra_cycle_s', 0.015)
+        self.declare_parameter('disengage_trim_per_extra_cycle_high_s', 0.015)
+        self.declare_parameter('rack_hold_duration_s', 0.2)
+        self.declare_parameter('rack_cycle_pause_s', 0.3)
         self.declare_parameter('dynamic_poll_interval_s', 0.05)
 
         # Legacy params retained for compatibility.
@@ -97,9 +97,9 @@ class ShooterController(Node):
         )
 
         self._engage_profiles = {
-            'mild': {'engage_us': 1000, 'engage_time_s': 0.40},
-            'medium': {'engage_us': 1270, 'engage_time_s': 1.70},
-            'strong': {'engage_us': 1300, 'engage_time_s': 1.01},
+            'mild': {'engage_us': 1000, 'engage_time_s': 1},
+            'medium': {'engage_us': 1200, 'engage_time_s': 1.40},
+            'strong': {'engage_us': 1300, 'engage_time_s': 1.52},
         }
         if self.engage_profile not in self._engage_profiles:
             self.get_logger().warn(
@@ -217,8 +217,8 @@ class ShooterController(Node):
                 )
 
     def _static_delivery(self):
-        delivery2_delay = 0.2
-        delivery3_delay = 8.2
+        delivery2_delay = 0.1
+        delivery3_delay = 7.1
 
         self._shoot_once_hardware()
         time.sleep(delivery2_delay)
@@ -276,7 +276,7 @@ class ShooterController(Node):
         self._global_shot_count += 1
 
     def _get_engage_time_for_cycle(self, cycle_count: int) -> float:
-        profile = self._engage_profiles.get(self.engage_profile, self._engage_profiles['medium'])
+        profile = self._engage_profiles.get(self.engage_profile, self._engage_profiles['mild'])
         _ = cycle_count
         return profile['engage_us'], profile['engage_time_s']
 

@@ -363,6 +363,18 @@ ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
   shooter_enable_hardware:=false
 ```
 
+To activate shooter node:
+
+static:
+```bash
+ros2 topic pub --once /shoot_type std_msgs/String "data: static"
+```
+
+dynamic:
+```bash
+ros2 topic pub --once /shoot_type std_msgs/String "data: dynamic"
+```
+
 Expected: shooter node starts without GPIO access errors.
 
 #### 8) Full Smoke Test
