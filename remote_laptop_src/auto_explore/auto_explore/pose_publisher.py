@@ -55,13 +55,13 @@ class ArucoPoseStreamer(Node):
         self.declare_parameter('image_topic', '/camera/image_raw')
         self.declare_parameter('camera_info_topic', '/camera/camera_info')
         self.declare_parameter('camera_frame', 'camera_optical_frame')
-        self.declare_parameter('marker_size_m', 0.053)
+        self.declare_parameter('marker_size_m', 0.049)
         self.declare_parameter('dictionary', 'DICT_4X4_250')
 
         self.image_topic = self.get_parameter('image_topic').value
         self.camera_info_topic = self.get_parameter('camera_info_topic').value
         self.camera_frame = self.get_parameter('camera_frame').value
-        self.marker_size_m = float(self.get_parameter('marker_size_m').value)
+        self.marker_size_m = float(self.get_paramet2er('marker_size_m').value)
         dict_name = self.get_parameter('dictionary').value
 
         self.bridge = CvBridge()
