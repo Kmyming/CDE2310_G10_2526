@@ -4,4 +4,32 @@ log/
 .github/copilot-instructions.md
 .github/agents
 logs/
+
+# python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*swp.
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+#Solidworks auto-save
+~$*.sld*
+*.sldprt~
+
+#sensitive
+.env
+
+#ROS bags
+*.bag
+*.db3
+
 ~$*
