@@ -1,3 +1,13 @@
+## [2.14.0] - 2026-04-15
+Introduced a two-pass dynamic delivery sequence for the shooter and improved RViz launch robustness.
+
+### Added / Changed
+- feat(shooter): Implemented a two-pass dynamic delivery sequence in `shooter_controller.py`, separating loading and launching phases for dynamic shots.
+- feat(launch): Added environment variable prefix to the RViz node in `nav_bringup.py` for cleaner launch and debugging.
+
+### Fixed
+- fix(auto_explore): Corrected a typo in the parameter retrieval method for 'marker_size_m' in `pose_publisher.py`.
+
 ## [2.13.2] - 2026-04-15
 Finalized fine-tuned shooting parameters for improved performance and updated Aruco marker detection.
 
