@@ -83,6 +83,7 @@ def generate_launch_description():
         executable='rviz2',
         name='rviz2',
         output='screen',
+        prefix='env XDG_DATA_DIRS=/usr/local/share:/usr/share LD_LIBRARY_PATH=/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/usr/lib/x86_64-linux-gnu GTK_MODULES= GTK_PATH= GIO_EXTRA_MODULES=',
         arguments=['-d', os.path.expanduser('~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz')],
         parameters=[
             {'use_sim_time': use_sim_time},
