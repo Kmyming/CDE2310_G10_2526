@@ -230,16 +230,28 @@ class ShooterController(Node):
 
     def _dynamic_delivery(self):
         shot_count = 0
+        pending_launch = False
+        active_cycle_index = 0
+
         while shot_count < 3:
             distance_m = self._read_ultrasonic_distance_m()
 
             if distance_m is not None and distance_m <= self.ultrasonic_distance_threshold_m:
                 shot_number = shot_count + 1
-                self.get_logger().info(
-                    f'Dynamic shot {shot_number}/3 triggered at {distance_m:.3f} m'
-                )
-                self._shoot_once_hardware()
-                shot_count += 1
+                if not pending_launch:
+                    active_cycle_index = self._global_shot_count
+                    self.get_logger().info(
+                        f'Dynamic pass 1 (load) for shot {shot_number}/3 at {distance_m:.3f} m'
+                    )
+                    self._dynamic_load_pass(active_cycle_index)
+                    pending_launch = True
+                else:
+                    self.get_logger().info(
+                        f'Dynamic pass 2 (launch) for shot {shot_number}/3 at {distance_m:.3f} m'
+                    )
+                    self._dynamic_launch_pass(active_cycle_index)
+                    shot_count += 1
+                    pending_launch = False
                 continue
 
             time.sleep(self.dynamic_poll_interval_s)
@@ -272,6 +284,33 @@ class ShooterController(Node):
         engage_thread.join()
         time.sleep(self.close_to_release_s)
 
+        self._disengage_rack(cycle_index)
+        self._global_shot_count += 1
+
+    def _dynamic_load_pass(self, cycle_index: int):
+        # Pass 1 mirrors the static timing profile up to (and including) gate close,
+        # but does not release the rack yet.
+        engage_thread = threading.Thread(target=self._engage_rack, args=(cycle_index,))
+        offset = self.engage_to_gate_open_offset_s
+
+        if offset >= 0.0:
+            engage_thread.start()
+            if offset > 0.0:
+                time.sleep(offset)
+            self._open_gate()
+        else:
+            self._open_gate()
+            time.sleep(abs(offset))
+            engage_thread.start()
+
+        time.sleep(self.ball_drop_s)
+        self._close_gate()
+        engage_thread.join()
+        # Rack remains loaded; launch happens on pass 2.
+
+    def _dynamic_launch_pass(self, cycle_index: int):
+        # Pass 2 uses the same release timing as static but no extra gate dwell.
+        time.sleep(self.close_to_release_s)
         self._disengage_rack(cycle_index)
         self._global_shot_count += 1
 
