@@ -50,6 +50,49 @@ class DockingController(Node):
         self.last_seen_time = self.get_clock().now()
 
         # Sensors
+        self.latest_rx = None
+        self.latest_ry = None
+        self.latest_rz = None
+        self.latest_rw = None
+
+        #Bot state from FSM
+        self.bot_state = "EXPLORE"
+        # Current odom pose
+        self.curr_x = 0.0
+        self.curr_y = 0.0
+        self.curr_yaw = 0.0
+        self.odom_ready = False
+
+        # Motion tuning
+        self.forward_speed = 0.08
+        self.turn_kp = 1.8
+        self.max_ang_speed = 0.25
+        self.turn_tolerance = math.radians(2.0)
+        self.dist_tolerance = 0.01
+
+        # Thresholds
+        self.tx_align_tolerance = 0.01     # “face marker exactly”
+        self.mid_tz_threshold = 0.30       # first straight approach limit
+        self.final_tz_threshold = 0.10     # final docking stop
+        self.theta_min_for_manoeuvre = math.radians(2.0)
+        self.tx_final_align_tolerance = 0.05
+
+        # State machine
+        self.state = "IDLE"
+
+        # Stored motion targets
+        self.turn_target_yaw = 0.0
+        self.theta = 0.0
+        self.side_drive_distance = 0.0
+        self.side_turn_direction = 0   # +1 or -1
+
+        # Drive start pose
+        self.drive_start_x = 0.0
+        self.drive_start_y = 0.0
+
+        #avoidance
+        self.robot_r = 0.2
+        self.scan_data = None
         self.scan = None
 
         # Pub/Sub

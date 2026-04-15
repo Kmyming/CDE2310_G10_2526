@@ -1,3 +1,9 @@
+## [2.11.2] - 2026-04-14
+Refined the initial approach distance for the docking maneuver.
+
+### Fixed
+- fix(Docking): Adjusted the `mid_tz_threshold` parameter in `docking_controller.py` from 0.50 to 0.30 to refine the initial straight approach limit during docking.
+
 ## [2.11.1] - 2026-04-14
 Ensured the shooter node has sufficient time to complete its operation during the launch sequence.
 
