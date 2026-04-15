@@ -52,6 +52,12 @@ def generate_launch_description():
         description='Enable ArUco marker detection'
     )
 
+    enable_pose_publisher_arg = DeclareLaunchArgument(
+        'enable_pose_publisher',
+        default_value='true',
+        description='Enable pose_publisher marker node'
+    )
+
     enable_docking_arg = DeclareLaunchArgument(
         'enable_docking',
         default_value='true',
@@ -77,6 +83,7 @@ def generate_launch_description():
     enable_fsm = LaunchConfiguration('enable_fsm')
     enable_navigation = LaunchConfiguration('enable_navigation')
     enable_markers = LaunchConfiguration('enable_markers')
+    enable_pose_publisher = LaunchConfiguration('enable_pose_publisher')
     enable_docking = LaunchConfiguration('enable_docking')
     enable_shooter = LaunchConfiguration('enable_shooter')
     shooter_enable_hardware = LaunchConfiguration('shooter_enable_hardware')
@@ -98,6 +105,7 @@ def generate_launch_description():
             'enable_fsm': enable_fsm,
             'enable_navigation': enable_navigation,
             'enable_markers': enable_markers,
+            'enable_pose_publisher': enable_pose_publisher,
             'enable_docking': enable_docking,
             'enable_shooter': enable_shooter,
             'shooter_enable_hardware': shooter_enable_hardware,
@@ -112,6 +120,7 @@ def generate_launch_description():
         enable_fsm_arg,
         enable_navigation_arg,
         enable_markers_arg,
+        enable_pose_publisher_arg,
         enable_docking_arg,
         enable_shooter_arg,
         shooter_enable_hardware_arg,

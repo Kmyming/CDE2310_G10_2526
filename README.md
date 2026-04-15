@@ -88,11 +88,41 @@ hostname -I
 
 Copy the IP shown on Pi boot and pass it to `shooter_pigpiod_host` from the laptop:
 
+Option 1: Run command directly each time
+
 ```bash
 ros2 launch auto_explore global_controller_bringup.py use_sim_time:=false \
-  enable_fsm:=false enable_navigation:=false enable_markers:=false \
-  enable_docking:=false enable_shooter:=true shooter_enable_hardware:=true \
+  enable_fsm:=true enable_navigation:=true enable_markers:=true \
+  enable_docking:=true enable_shooter:=true shooter_enable_hardware:=true \
   shooter_pigpiod_host:=<PI_IP_FROM_BOOT>
+```
+
+Option 2: Use a reusable `start` shell function with IP argument
+
+One-time setup required on the laptop:
+
+```bash
+cat >> ~/.bashrc << 'EOF'
+start () {
+  if [ -z "$1" ]; then
+    echo "Usage: start <PI_IP>"
+    return 1
+  fi
+
+  ros2 launch auto_explore global_controller_bringup.py use_sim_time:=false \
+    enable_fsm:=true enable_navigation:=true enable_markers:=true \
+    enable_docking:=true enable_shooter:=true shooter_enable_hardware:=true \
+    shooter_pigpiod_host:="$1"
+}
+EOF
+
+source ~/.bashrc
+```
+
+Run with:
+
+```bash
+start <PI_IP_FROM_BOOT>
 ```
 
 #### D) After code edits
@@ -168,7 +198,8 @@ ros2 launch auto_explore global_bringup.py \
   enable_markers:=true \
   enable_docking:=true \
   enable_shooter:=true \
-  shooter_enable_hardware:=true
+  shooter_enable_hardware:=true \
+  shooter_pigpiod_host:=<PI_IP_FROM_BOOT>
 ```
 
 **Important:** copy the command exactly as plain text into bash. Do **not** include Markdown link syntax like `[global_bringup.py](...)`, which causes shell parsing errors.
