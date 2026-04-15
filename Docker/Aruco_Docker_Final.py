@@ -14,9 +14,9 @@ from std_msgs.msg import Bool
 
 
 
-class MoveOnAruco(Node):
+class DockingController(Node):
     def __init__(self):
-        super().__init__('move_on_aruco')
+        super().__init__('docking_controller')
 
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel_docking', 10)
         self.status_pub = self.create_publisher(Bool, '/dock_done', 10)
@@ -34,6 +34,14 @@ class MoveOnAruco(Node):
         self.marker_visible = False
         self.last_seen_time = self.get_clock().now()
         self.timeout_sec = 2
+
+        # --- Added: long marker-loss watchdog ---
+        # This is separate from timeout_sec above.
+        # timeout_sec is your short "live visibility freshness" timeout.
+        # marker_invisible_timeout_sec is the new requested "if marker stays invisible
+        # for 30 seconds continuously during docking, fail docking" timeout.
+        self.marker_invisible_since = None
+        self.marker_invisible_timeout_sec = 30.0
         
         self.latest_tx = None
         self.latest_tz = None
@@ -67,6 +75,13 @@ class MoveOnAruco(Node):
         # State machine
         self.state = "IDLE"
 
+        # --- Added: per-state watchdog ---
+        # Track when the current state was entered.
+        # If we remain in one active docking state for too long (45 sec),
+        # docking will auto-fail and move to ABORT -> IDLE.
+        self.state_enter_time = self.get_clock().now()
+        self.state_timeout_sec = 45.0
+
         # Stored motion targets
         self.turn_target_yaw = 0.0
         self.theta = 0.0
@@ -94,6 +109,9 @@ class MoveOnAruco(Node):
             if transform.child_frame_id.startswith('aruco_marker_'):
                 self.last_seen_time = self.get_clock().now()
                 self.marker_visible = True
+
+                # --- Added: reset long invisibility timer when marker is seen again ---
+                self.marker_invisible_since = None
 
                 self.latest_tx = transform.transform.translation.x
                 self.latest_tz = transform.transform.translation.z
@@ -315,7 +333,19 @@ class MoveOnAruco(Node):
         if self.state == new_state:
             return
 
+        old_state = self.state
         self.state = new_state
+
+        # --- Added: reset state timer on every actual state transition ---
+        self.state_enter_time = self.get_clock().now()
+
+        # --- Added: useful transition log for debugging watchdog behaviour ---
+        self.get_logger().info(f"State transition: {old_state} -> {new_state}")
+
+        # --- Added: reset special-search latch when leaving SPECIAL_SEARCH ---
+        # This avoids stale flags carrying over into later runs.
+        if old_state == "SPECIAL_SEARCH" and new_state != "SPECIAL_SEARCH":
+            self.special_search_started = False
 
         if new_state == "DONE":
             msg = Bool()
@@ -329,6 +359,12 @@ class MoveOnAruco(Node):
             self.status_pub.publish(msg)
             self.get_logger().info("Aborting docking procedure")
 
+    def is_active_docking_state(self):
+        # --- Added ---
+        # Watchdogs should only apply while docking is actively underway.
+        # We do not apply them in IDLE, DONE, or ABORT because those are terminal / passive states.
+        return self.state not in ["IDLE", "DONE", "ABORT"]
+
     def timer_callback(self):
         if not self.odom_ready:
             return
@@ -338,11 +374,46 @@ class MoveOnAruco(Node):
         avoidance_vel, avoidance_ang = self.localControl(self.scan)
         if (avoidance_vel is not None and avoidance_ang is not None and self.state not in ["DONE", "FINAL_APPROACH", "SPECIAL_SEARCH", "ABORT", "OBSTACLE_AVOIDANCE", "IDLE"]):
             self.get_logger().info("OBSTACLE AVOIDANCE ACTIVATED")
-            self.state = "OBSTACLE_AVOIDANCE"
+            self.set_state("OBSTACLE_AVOIDANCE")
 
         dt = (self.get_clock().now() - self.last_seen_time).nanoseconds / 1e9
         if dt > self.timeout_sec:
-            self.marker_visible = False
+            # Marker is no longer considered live/visible
+            if self.marker_visible:
+                self.marker_visible = False
+
+                # --- Added: start the long invisibility timer only once,
+                # at the moment we first become "not visible" ---
+                if self.marker_invisible_since is None:
+                    self.marker_invisible_since = self.get_clock().now()
+        else:
+            # --- Added: if marker is considered live again, clear the long invisibility timer ---
+            self.marker_invisible_since = None
+
+        # --- Added: 30-second continuous marker-not-visible watchdog ---
+        # This does not replace your existing immediate loss logic below.
+        # It only adds a longer fail-safe for active docking states.
+        if self.is_active_docking_state() and not self.marker_visible and self.marker_invisible_since is not None:
+            invisible_dt = (self.get_clock().now() - self.marker_invisible_since).nanoseconds / 1e9
+            if invisible_dt >= self.marker_invisible_timeout_sec:
+                self.get_logger().info(
+                    f"Marker invisible for {invisible_dt:.2f}s -> ABORT"
+                )
+                self.cmd_pub.publish(Twist())
+                self.set_state("ABORT")
+                return
+
+        # --- Added: 45-second per-state watchdog ---
+        # If we stay too long in one active docking state, auto-fail.
+        if self.is_active_docking_state():
+            state_dt = (self.get_clock().now() - self.state_enter_time).nanoseconds / 1e9
+            if state_dt >= self.state_timeout_sec:
+                self.get_logger().info(
+                    f"State {self.state} timed out after {state_dt:.2f}s -> ABORT"
+                )
+                self.cmd_pub.publish(Twist())
+                self.set_state("ABORT")
+                return
 
         # Only stop on marker loss in states that truly need live marker feedback
         if self.state != "DONE" and not self.marker_visible:
@@ -363,11 +434,11 @@ class MoveOnAruco(Node):
             done = self.rotate_to_center_marker()
             if done:
                 self.get_logger().info("SEARCH -> APPROACH_1")
-                self.state = "APPROACH_1"
+                self.set_state("APPROACH_1")
 
         if self.state == "IDLE":
             if self.latest_tz is not None and self.bot_state == "DOCK":
-                self.state = "SEARCH"
+                self.set_state("SEARCH")
         # -------------------------
         # DRIVE FORWARD UNTIL tz < mid_tz_threshold
         # -------------------------
@@ -397,7 +468,7 @@ class MoveOnAruco(Node):
                         f"theta={math.degrees(self.theta):.2f} deg, "
                         f"side_drive={self.side_drive_distance:.3f} m"
                     )
-                    self.state = "TURN_FACE_MARKER"
+                    self.set_state("TURN_FACE_MARKER")
                 else:
                     self.get_logger().info(
                         f"APPROACH_1 -> TURN_SIDE | "
@@ -405,7 +476,7 @@ class MoveOnAruco(Node):
                         f"side_drive={self.side_drive_distance:.3f} m, "
                         f"target_yaw={math.degrees(self.turn_target_yaw):.2f} deg"
                     )
-                    self.state = "TURN_SIDE"
+                    self.set_state("TURN_SIDE")
                 return
 
             cmd = Twist()
@@ -421,7 +492,7 @@ class MoveOnAruco(Node):
             if done:
                 self.start_drive()
                 self.get_logger().info("TURN_SIDE -> DRIVE_SIDE")
-                self.state = "DRIVE_SIDE"
+                self.set_state("DRIVE_SIDE")
 
         # -------------------------
         # DRIVE TO PERPENDICULAR
@@ -437,7 +508,7 @@ class MoveOnAruco(Node):
                     f"travelled={travelled:.3f} m, "
                     f"side_turn_direction={self.side_turn_direction}"
                 )
-                self.state = "TURN_FACE_MARKER"
+                self.set_state("TURN_FACE_MARKER")
                 return
 
             cmd = Twist()
@@ -459,7 +530,7 @@ class MoveOnAruco(Node):
             if abs(tx) < self.tx_final_align_tolerance:
                 self.cmd_pub.publish(Twist())
                 self.get_logger().info("TURN_FACE_MARKER -> FINAL_APPROACH")
-                self.state = "FINAL_APPROACH"
+                self.set_state("FINAL_APPROACH")
                 return
 
             # rotate slowly in the opposite direction of the earlier side-turn
@@ -500,14 +571,14 @@ class MoveOnAruco(Node):
         # -------------------------
         elif self.state == "DONE":
             self.cmd_pub.publish(Twist())
-            self.state = "IDLE"   # after docking, go to IDLE where we do nothing until a new marker is seen
+            self.set_state("IDLE")   # after docking, go to IDLE where we do nothing until a new marker is seen
 
         # -------------------------
         # ABORT
         # -------------------------
         elif self.state == "ABORT":
             self.cmd_pub.publish(Twist())
-            self.state = "IDLE"   # after aborting, go to IDLE where we do nothing until a new marker is seen
+            self.set_state("IDLE")   # after aborting, go to IDLE where we do nothing until a new marker is seen
 
         # -------------------------
         # OBSTACLE AVOIDANCE
@@ -520,7 +591,7 @@ class MoveOnAruco(Node):
             avoidance_vel, avoidance_ang = self.localControl(self.scan)
             if avoidance_vel is None or avoidance_ang is None:
                 self.get_logger().info("OBSTACLE AVOIDANCE -> SPECIAL SEARCH")
-                self.state = "SPECIAL_SEARCH"
+                self.set_state("SPECIAL_SEARCH")
             return 
 
         # -------------------------
@@ -532,6 +603,13 @@ class MoveOnAruco(Node):
                 self.special_search_accum_yaw = 0.0
                 self.special_search_started = True
                 self.marker_visible = False  # marker data reset for visibility
+
+                # --- Added: restart long invisibility timer at the start of special search ---
+                # Since this mode intentionally searches for a missing marker,
+                # we begin tracking the requested 30s continuous invisibility condition here too.
+                if self.marker_invisible_since is None:
+                    self.marker_invisible_since = self.get_clock().now()
+
                 self.get_logger().info("SPECIAL_SEARCH started")
 
             cmd = Twist()
@@ -547,7 +625,7 @@ class MoveOnAruco(Node):
                 self.cmd_pub.publish(Twist())
                 self.special_search_started = False
                 self.get_logger().info("SPECIAL_SEARCH -> SEARCH")
-                self.state = "SEARCH"
+                self.set_state("SEARCH")
                 return
 
             if self.special_search_accum_yaw >= math.radians(350):
@@ -564,12 +642,10 @@ class MoveOnAruco(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = MoveOnAruco()
+    node = DockingController()
 
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
     finally:
         node.destroy_node()
         rclpy.shutdown()
