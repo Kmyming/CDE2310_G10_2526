@@ -1,3 +1,18 @@
+## [2.12.0] - 2026-04-15
+Major refactor of the docking controller, introduction of delayed startup for SLAM and RViz, and various parameter tunings for SLAM and shooter.
+
+### Added / Changed
+- feat(docking): Reworked the `docking_controller.py` FSM to a simpler align-and-approach logic, introducing new configurable parameters for approach speed, angular speed, alignment gain, tolerances, and docking distance.
+- feat(launch): Added `slam_start_delay_sec` and `rviz_start_delay_sec` launch arguments to `nav_bringup.py` to delay SLAM Toolbox and RViz startup using `TimerAction`.
+- feat(launch): Introduced `enable_pose_publisher` launch argument in `global_bringup.py` and `global_controller_bringup.py` to conditionally enable the `pose_publisher` node.
+
+### Fixed
+- fix(slam): Adjusted `throttle_scans`, `minimum_time_interval`, `transform_timeout`, `tf_buffer_duration`, and `scan_buffer_size` in `mapper_params_online_async.yaml` to improve SLAM stability and TF message handling.
+- fix(shooter): Tuned `gate_settle_s` and `ball_drop_s` parameters in `shooter_controller.py` for improved timing.
+
+### Documentation
+- docs(setup): Updated `README.md` with `shooter_pigpiod_host` in launch commands and added a reusable `start` shell function for simplified deployment.
+
 ## [2.11.2] - 2026-04-14
 Refined the initial approach distance for the docking maneuver.
 

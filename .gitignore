@@ -4,4 +4,50 @@ log/
 .github/copilot-instructions.md
 .github/agents
 logs/
+.colcon/
+
+# python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+.venv/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+#Solidworks auto-save
+~$*.sld*
+*.sldprt~
+
+#sensitive
+.env
+
+#ROS bags
+*.bag
+*.db3
+*.mcap
+rosbag2_*/
+
+# ROS local runtime/session artifacts
+*.rviz2
+*.active
+*.orig
+
 ~$*
