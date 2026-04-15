@@ -1,3 +1,10 @@
+## [2.13.0] - 2026-04-15
+Streamlined exploration by removing the yaw rotation sweep at waypoints and introduced a new tight maze simulation environment.
+
+### Added / Changed
+- feat(exploration): Eliminated the yaw rotation sweep at waypoints in `exploration_controller.py`, allowing the robot to transition immediately to the next waypoint for improved navigation efficiency.
+- feat(simulation): Added a new `tight_maze.world` Gazebo environment for testing navigation in constrained spaces.
+
 ## [2.12.0] - 2026-04-15
 Major refactor of the docking controller, introduction of delayed startup for SLAM and RViz, and various parameter tunings for SLAM and shooter.
 
