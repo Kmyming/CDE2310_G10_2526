@@ -38,6 +38,10 @@ Iterative redesign of the payload launcher for improved feeding, increased launc
 ### Testing
 - test(shooter): Added a standalone servo isolation test script (`servo_isolation_test.py`).
 
+## [2.14.1] - 2026-04-16
+### Fixed
+- fix(docking): Recalibrated docking parameters in `docking_controller.py` by adjusting `mid_tz_threshold` to `0.30` and introducing a corrective turn during final alignment for improved centering.
+
 ## [2.14.0] - 2026-04-15
 Introduced a two-pass dynamic delivery sequence for the shooter and improved RViz launch robustness.
 
