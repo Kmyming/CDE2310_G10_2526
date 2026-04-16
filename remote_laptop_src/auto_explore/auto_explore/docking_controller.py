@@ -67,7 +67,7 @@ class DockingController(Node):
 
         # Thresholds
         self.tx_align_tolerance = 0.01     # “face marker exactly”
-        self.mid_tz_threshold = 0.50       # first straight approach limit
+        self.mid_tz_threshold = 0.30       # first straight approach limit
         self.final_tz_threshold = 0.10     # final docking stop
         self.theta_min_for_manoeuvre = math.radians(2.0)
         self.tx_final_align_tolerance = 0.05
@@ -529,6 +529,8 @@ class DockingController(Node):
 
             if abs(tx) < self.tx_final_align_tolerance:
                 self.cmd_pub.publish(Twist())
+                if self.side_turn_direction == -1:
+                    self.turn_to_target(self.normalize_angle(self.curr_yaw + math.radians(5.0)))
                 self.get_logger().info("TURN_FACE_MARKER -> FINAL_APPROACH")
                 self.set_state("FINAL_APPROACH")
                 return
@@ -538,6 +540,7 @@ class DockingController(Node):
             cmd.linear.x = 0.0
             cmd.angular.z = -self.side_turn_direction * min(self.max_ang_speed * 0.5, self.turn_kp * abs(tx))
             self.cmd_pub.publish(cmd)
+            
 
         # -------------------------
         # FINAL STRAIGHT APPROACH UNTIL tz < 0.1
