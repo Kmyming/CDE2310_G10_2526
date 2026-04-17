@@ -19,11 +19,11 @@ class ShooterController(Node):
         self.declare_parameter('pigpiod_host', 'localhost')
         self.declare_parameter('pigpiod_port', 8888)
         self.declare_parameter('gate_pin', 12)
-        self.declare_parameter('rack_pin', 19)
+        self.declare_parameter('rack_pin', 13)
         self.declare_parameter('ultrasonic_trigger_pin', 23)
         self.declare_parameter('ultrasonic_echo_pin', 24)
         self.declare_parameter('ultrasonic_distance_threshold_m', 0.70)
-        self.declare_parameter('ultrasonic_simulated_distance_m', 0.70)
+        self.declare_parameter('ultrasonic_simulated_distance_m', 0.15)
         self.declare_parameter('gate_open_us', 500)
         self.declare_parameter('gate_close_us', 1000)
         self.declare_parameter('gate_settle_s', 0.225)
@@ -97,7 +97,7 @@ class ShooterController(Node):
         )
 
         self._engage_profiles = {
-            'mild': {'engage_us': 1000, 'engage_time_s': 0.9},
+            'mild': {'engage_us': 1000, 'engage_time_s': 1},
             'medium': {'engage_us': 1200, 'engage_time_s': 1.40},
             'strong': {'engage_us': 1300, 'engage_time_s': 1.52},
         }
