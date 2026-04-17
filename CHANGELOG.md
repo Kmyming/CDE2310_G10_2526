@@ -1,3 +1,15 @@
+## [2.15.0] - 2026-04-17
+### Added / Changed
+- feat(navigation): Enhanced frontier group selection and local obstacle avoidance in exploration.
+- feat(marker): Implemented a `/marker_detected` publisher in `Pose_publisher_V2_TF2.py` to indicate Aruco marker visibility.
+
+### Fixed
+- fix(shooter): Reverted and reorganized shooter delivery logic, including dynamic shot counting, and fine-tuned pinion engagement trim parameters for consistency.
+- fix(fsm): Improved FSM handling of docking failures and marker loss during docking.
+
+### Testing
+- test(shooter): Added a standalone servo isolation test script (`servo_isolation_test.py`).
+
 ## [2.14.0] - 2026-04-15
 Introduced a two-pass dynamic delivery sequence for the shooter and improved RViz launch robustness.
 
