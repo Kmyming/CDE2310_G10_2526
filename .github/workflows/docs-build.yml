@@ -1,0 +1,29 @@
+name: Validate Documentation Pages
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - docs/**
+      - .github/workflows/docs-build.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build with Jekyll
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./docs
+          destination: ./_site

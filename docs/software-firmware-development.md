@@ -49,6 +49,7 @@ description: Build, launch, versioning, and CI workflow documentation.
 
 ## CI and Agentic Changelog Pipeline
 
+Pull-request documentation validation is defined in `.github/workflows/docs-build.yml`.
 Documentation site deployment is defined in `.github/workflows/docs-pages.yml`.
 
 This repository uses a custom CI pipeline powered by [Qodo PR-Agent](https://github.com/qodo-ai/pr-agent) and Google's **Gemini 2.5 Flash** model to automate pull request management and documentation, standardize our release documentation, enforce Semantic Versioning (SemVer 2.0.0), and reduce administrative overhead. 
@@ -355,4 +356,3 @@ The integrated bringup includes:
 - Overlay/source problems.
 - Launch-argument propagation mismatches.
 - RViz environment contamination.
-

@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - linuxming
     paths:
       - docs/**
       - .github/workflows/docs-pages.yml
