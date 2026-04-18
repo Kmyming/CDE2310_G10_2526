@@ -1,3 +1,11 @@
+## [2.16.0] - 2026-04-18
+### Added / Changed
+- feat(payload): Added servo gate mount
+- feat (payload): launcher design iteration to prevent gear slipping (add servo cover, reduce servo screw hole diameter, reduce gear distance, increase wall thickness to reduce launcher flex)
+- feat (payload): moved ball stop further up to reduce feeding jam and increase launch distance
+- feat (payload): side wall addition to prevent ball rolling out during feeding
+- feat (payload): increased launcher tilt to reduce ball falling out of launcher
+
 ## [2.15.1] - 2026-04-18
 ### Documentation
 - docs(interface): Documented ROS topic specifications, launch arguments, timing, and error handling.
