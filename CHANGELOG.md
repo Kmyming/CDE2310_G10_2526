@@ -1,3 +1,16 @@
+## [2.16.0] - 2026-04-18
+Iterative redesign of the payload launcher for improved feeding, increased launch force, and reduced gear slipping, based on testing results.
+
+### Added / Changed
+- feat(payload): Added servo gate mount
+- feat(payload): Launcher design iteration to prevent gear slipping (add servo cover, reduce servo screw hole diameter, reduce gear distance, increase wall thickness to reduce launcher flex)
+- feat(payload): Moved ball stop further up to reduce feeding jam and increase launch distance
+- feat(payload): Side wall addition to prevent ball rolling out during feeding
+- feat(payload): Increased launcher tilt to reduce ball falling out of launcher
+
+### Fixed
+- fix(payload): Launcher incremental redesign for reduced gear slipping, increased launch force & servo gate feeding
+
 # Changelog
 
 ## [2.16.0] - 2026-04-18
