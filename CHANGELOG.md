@@ -1,3 +1,5 @@
+# Changelog
+
 ## [2.16.0] - 2026-04-18
 ### Added / Changed
 - feat(payload): Added servo gate mount
@@ -147,7 +149,6 @@ Refactored parameter loading for navigation and SLAM to use ROS 2 parameter serv
 ### Documentation
 - docs(README): Revised `README.md` to document the removal of the marker logger and include a new section for troubleshooting launch file updates.
 
-# Changelog
 ## [2.9.2] - 2026-04-12
 Refined docking activation logic so the docking controller only engages when the FSM is in the docking state, preventing unintended docking behaviour during other mission phases.
 
