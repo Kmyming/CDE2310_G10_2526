@@ -1,3 +1,9 @@
+## [2.15.1] - 2026-04-18
+### Documentation
+- docs(interface): Documented ROS topic specifications, launch arguments, timing, and error handling.
+- docs(subsystem): Completed navigation and FSM subsystem design, state flow, and parameter tuning.
+- docs(development): Added configuration management guide and comprehensive troubleshooting procedures.
+
 ## [2.15.0] - 2026-04-17
 ### Added / Changed
 - feat(navigation): Enhanced frontier group selection and local obstacle avoidance in exploration.
