@@ -1,3 +1,13 @@
+# Changelog
+
+## [2.16.0] - 2026-04-18
+### Added / Changed
+- feat(payload): Added servo gate mount
+- feat (payload): launcher design iteration to prevent gear slipping (add servo cover, reduce servo screw hole diameter, reduce gear distance, increase wall thickness to reduce launcher flex)
+- feat (payload): moved ball stop further up to reduce feeding jam and increase launch distance
+- feat (payload): side wall addition to prevent ball rolling out during feeding
+- feat (payload): increased launcher tilt to reduce ball falling out of launcher
+
 ## [2.15.1] - 2026-04-18
 ### Documentation
 - docs(interface): Documented ROS topic specifications, launch arguments, timing, and error handling.
@@ -139,7 +149,6 @@ Refactored parameter loading for navigation and SLAM to use ROS 2 parameter serv
 ### Documentation
 - docs(README): Revised `README.md` to document the removal of the marker logger and include a new section for troubleshooting launch file updates.
 
-# Changelog
 ## [2.9.2] - 2026-04-12
 Refined docking activation logic so the docking controller only engages when the FSM is in the docking state, preventing unintended docking behaviour during other mission phases.
 
