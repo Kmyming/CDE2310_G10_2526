@@ -453,11 +453,10 @@ class navigationControl(Node):
                 else:
                     v, w, self.i = pure_pursuit(self.x, self.y, self.yaw, self.path, self.i)
                     if abs(self.x - self.path[-1][0]) < target_error and abs(self.y - self.path[-1][1]) < target_error:
+                        # Reached waypoint, return to exploration
                         v = 0.0
                         w = 0.0
                         self.exploration_mode = True
-                        if hasattr(self, 't') and self.t.is_alive():
-                            self.t.join()
 
                     twist.linear.x = v
                     twist.angular.z = w

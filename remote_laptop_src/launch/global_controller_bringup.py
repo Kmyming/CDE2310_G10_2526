@@ -2,7 +2,7 @@
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 from launch.conditions import IfCondition
@@ -40,6 +40,12 @@ def generate_launch_description():
         'enable_markers',
         default_value='true',
         description='Enable ArUco marker detection'
+    )
+
+    enable_pose_publisher_arg = DeclareLaunchArgument(
+        'enable_pose_publisher',
+        default_value='true',
+        description='Enable pose_publisher marker node'
     )
 
     enable_docking_arg = DeclareLaunchArgument(
@@ -107,6 +113,7 @@ def generate_launch_description():
     enable_fsm = LaunchConfiguration('enable_fsm')
     enable_navigation = LaunchConfiguration('enable_navigation')
     enable_markers = LaunchConfiguration('enable_markers')
+    enable_pose_publisher = LaunchConfiguration('enable_pose_publisher')
     enable_docking = LaunchConfiguration('enable_docking')
     enable_shooter = LaunchConfiguration('enable_shooter')
     shooter_enable_hardware = LaunchConfiguration('shooter_enable_hardware')
@@ -140,7 +147,7 @@ def generate_launch_description():
         ],
         condition=IfCondition(enable_navigation)
     )
-
+    
     pose_publisher_node = Node(
         package='auto_explore',
         executable='pose_publisher',
@@ -153,9 +160,13 @@ def generate_launch_description():
             {'marker_size_m': 0.053},
             {'dictionary': 'DICT_4X4_250'},
         ],
-        condition=IfCondition(enable_markers)
+        condition=IfCondition(
+            PythonExpression([
+                "'", enable_markers, "' == 'true' and '", enable_pose_publisher, "' == 'true'"
+            ])
+        )
     )
-
+    
     docking_controller_node = Node(
         package='auto_explore',
         executable='docking_controller',
@@ -194,6 +205,7 @@ def generate_launch_description():
         enable_fsm_arg,
         enable_navigation_arg,
         enable_markers_arg,
+        enable_pose_publisher_arg,
         enable_docking_arg,
         enable_shooter_arg,
         shooter_enable_hardware_arg,

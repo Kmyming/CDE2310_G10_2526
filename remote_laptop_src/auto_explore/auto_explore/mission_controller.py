@@ -3,6 +3,7 @@ from rclpy.node import Node
 from std_msgs.msg import String, Bool
 from geometry_msgs.msg import Twist
 from tf2_msgs.msg import TFMessage
+import time
 
 class FSMNode(Node):
     def __init__(self):
@@ -16,6 +17,9 @@ class FSMNode(Node):
         self.map_explored = False
         self.shoot_requested = False
         self.launch_completion_consumed = False
+        self.launch_completion_pending = False
+        self.launch_start_time = None
+        self.launch_min_duration_sec = 15.0
 
         # Zone tracking
         self.current_zone = None
@@ -24,6 +28,10 @@ class FSMNode(Node):
             'dynamic': False,
         }
 
+        # Backup state tracking
+        self.backup_start_time = None
+        self.backup_duration = 2.0  # Backup for 2 seconds
+
         # Latest velocity inputs
         self.latest_nav = Twist()
         self.latest_dock = Twist()
@@ -31,7 +39,6 @@ class FSMNode(Node):
         # Publishers
         self.state_pub = self.create_publisher(String, '/states', 10)
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.zone_pub = self.create_publisher(String, '/zone', 10)
         self.shoot_type_pub = self.create_publisher(String, '/shoot_type', 10)
 
         # Subscribers (state triggers)
@@ -89,14 +96,20 @@ class FSMNode(Node):
         msg.data = new_state
         self.state_pub.publish(msg)
 
-        if new_state in ["DOCK", "LAUNCH"] and self.current_zone is not None:
-            zone_msg = String()
-            zone_msg.data = self.current_zone
-            self.zone_pub.publish(zone_msg)
-
-        if new_state != "LAUNCH":
+        if new_state == "LAUNCH":
+            self.launch_start_time = time.monotonic()
+            self.launch_completion_pending = False
             self.shoot_requested = False
             self.launch_completion_consumed = False
+        else:
+            self.shoot_requested = False
+            self.launch_completion_consumed = False
+            self.launch_completion_pending = False
+            self.launch_start_time = None
+
+        # Initialize backup timing when entering BACKUP state
+        if new_state == "BACKUP":
+            self.backup_start_time = time.time()
 
     # FSM loop
     def state_machine_loop(self):
@@ -118,6 +131,22 @@ class FSMNode(Node):
                     trigger.data = 'auto'
                 self.shoot_type_pub.publish(trigger)
                 self.shoot_requested = True
+                if self.launch_start_time is None:
+                    self.launch_start_time = time.monotonic()
+                self.get_logger().info(f"[FSM] Shooter trigger sent ({trigger.data})")
+
+            if self.launch_completion_pending and self.launch_start_time is not None:
+                elapsed = time.monotonic() - self.launch_start_time
+                if elapsed >= self.launch_min_duration_sec:
+                    self._handle_launch_completion()
+
+        elif self.state == "BACKUP":
+            # Check if backup duration has elapsed
+            elapsed = time.time() - self.backup_start_time
+            if elapsed >= self.backup_duration:
+                self.get_logger().info("[FSM] Backup complete. Returning to EXPLORE")
+                self.marker_detected = False
+                self.change_state("EXPLORE")
 
         elif self.state == "END":
             self.timer.cancel()
@@ -130,6 +159,11 @@ class FSMNode(Node):
             self.cmd_pub.publish(self.latest_nav)
         elif self.state == "DOCK":
             self.cmd_pub.publish(self.latest_dock)
+        elif self.state == "BACKUP":
+            # Publish reverse velocity
+            backup_twist = Twist()
+            backup_twist.linear.x = -0.1  # Negative = reverse (slower)
+            self.cmd_pub.publish(backup_twist)
         else:
             self.cmd_pub.publish(Twist())
 
@@ -152,10 +186,16 @@ class FSMNode(Node):
         self.change_state('EXPLORE')
 
     def shoot_done_callback(self, msg: Bool):
-        self._handle_launch_completion(msg)
-
-    def _handle_launch_completion(self, msg: Bool):
         if self.state != 'LAUNCH' or not msg.data:
+            return
+
+        self.launch_completion_pending = True
+        if self.launch_start_time is None:
+            self.launch_start_time = time.monotonic()
+        self.get_logger().info('[FSM] Shooter completion received, waiting for launch hold to finish')
+
+    def _handle_launch_completion(self):
+        if self.state != 'LAUNCH':
             return
 
         if self.launch_completion_consumed:
@@ -163,13 +203,17 @@ class FSMNode(Node):
             return
 
         self.launch_completion_consumed = True
+        self.launch_completion_pending = False
 
         if self.current_zone in self.visited_markers:
             self.visited_markers[self.current_zone] = True
 
         self.marker_count += 1
         self.current_zone = None
-        self.change_state("EXPLORE")
+        
+        # Immediately transition to BACKUP after shooting completes
+        self.get_logger().info("[FSM] Shooting complete! Transitioning to BACKUP")
+        self.change_state("BACKUP")
 
     def map_explored_callback(self, msg: Bool):
         self.map_explored = msg.data
