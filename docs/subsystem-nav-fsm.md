@@ -24,6 +24,14 @@ description: Frontier exploration, path planning, and mission state-machine desi
 
 # Software Subsystem: Navigation and FSM
 
+## Document Purpose
+
+This is the **design specification for the navigation and mission control subsystems**: exploration algorithm, path planning, FSM state flow, and subsystem architecture. This document explains WHAT the subsystems do and WHY.
+
+**Cross-references for integration:**
+- [interface-control-document.md](interface-control-document.md) - Complete ROS topic specifications, timing, and error handling
+- [software-firmware-development.md](software-firmware-development.md) - Practical build, launch, and troubleshooting guides
+
 ## Purpose
 
 Provide autonomous frontier-based exploration, mission-state coordination, and velocity control for the TurtleBot3 mission stack.
@@ -36,46 +44,144 @@ FSM logic is launched from `remote_laptop_src/launch/global_controller_bringup.p
 
 ## Launch Interface
 
-- `enable_slam`
-- `enable_rviz`
-- `slam_params_file`
-- `slam_start_delay_sec`
-- `rviz_start_delay_sec`
+For complete launch argument documentation, see [interface-control-document.md](interface-control-document.md#launch-arguments).
+
+**Navigation launcher (`nav_bringup.py`) key arguments:**
+- `enable_slam` - Enable SLAM Toolbox mapping
+- `enable_rviz` - Enable RViz visualization  
+- `slam_params_file` - Path to SLAM config YAML
+- `slam_start_delay_sec` - Delay before SLAM start (prevents startup races)
+- `rviz_start_delay_sec` - Delay before RViz start (lets SLAM initialize first)
+
+For practical launch examples and sequencing, see [software-firmware-development.md](software-firmware-development.md#launch-sequences-verified).
 
 ## Exploration Algorithm
 
-- Frontier detection identifies unexplored boundaries.
-- Selected goals are forwarded to the motion stack.
-- The controller advances until no frontiers remain.
+The exploration controller uses frontier-based path planning to autonomously discover unmapped regions:
+
+1. **Frontier Detection**: Identifies boundaries between known and unknown space in the occupancy grid
+2. **Goal Selection**: Selects the nearest frontier or highest-value frontier as the next waypoint
+3. **Path Planning**: Computes collision-free path using A* algorithm with configurable expansion and cost parameters
+4. **Path Smoothing**: Applies spline interpolation to smooth the planned path for smoother robot motion
+5. **Goal Achievement**: Uses lookahead-distance control to track the path and advance to the next frontier
+6. **Completion**: Signals `/map_explored` when no frontiers remain in the map
+
+**Configuration Parameters** (from `config/params.yaml`):
+- `speed`: Linear velocity command (m/s)
+- `lookahead_distance`: Distance ahead on path for steering control (m)
+- `expansion_size`: Grid expansion for obstacle clearance (cells)
+- `target_error`: Acceptable distance error to goal (m)
+- `robot_r`: Robot radius for collision checking (m)
 
 ## Path Planning
 
-- The controller consumes map, odometry, and scan inputs.
-- Waypoints are smoothed and followed using the configured controller behavior.
+The exploration controller computes safe, smooth paths from the current robot pose to frontier goals:
+
+1. **Map Representation**: Consumes occupancy grid from SLAM Toolbox (`/map`)
+2. **A* Search**: Finds optimal path while respecting obstacles and robot radius
+3. **Collision Avoidance**: Maintains clearance around obstacles using expansion parameter
+4. **Spline Smoothing**: Applies scipy B-spline interpolation to create smooth, differentiable paths
+5. **Execution**: Publishes path to `/exploration_path` for visualization in RViz
+6. **Control**: Uses lookahead distance and path curvature to compute steering and speed commands
+
+**Data Flow:**
+- Input: `/map` (OccupancyGrid), `/odom` (current pose), `/scan` (immediate obstacles)
+- Output: `/cmd_vel_nav` (Twist commands to FSM), `/exploration_path` (Path visualization)
 
 ## Control Loop
 
-- A timer-driven loop keeps navigation responsive.
-- Delayed bringup helps avoid early TF and scan startup races.
+The exploration controller runs a responsive real-time control loop:
+
+- **Loop Rate**: 10 Hz timer driving state machine and velocity computation
+- **Input Aggregation**: Subscribes to `/map`, `/odom`, `/scan` with adaptive QoS for sensor data
+- **Output Frequency**: Publishes `/cmd_vel_nav` at control loop rate (~100 ms cycle)
+- **Failsafe**: If map unavailable, controller waits for SLAM before planning
+
+For detailed timing specifications including startup delays and topic publishing frequencies, see [interface-control-document.md](interface-control-document.md#timing-and-rates).
 
 ## Parameters and Tuning
 
-- `speed`
-- `lookahead_distance`
-- `expansion_size`
-- `target_error`
-- `robot_r`
+Navigation behavior is controlled by parameters in `config/params.yaml`. For detailed parameter management, file locations, and override procedures, see [software-firmware-development.md](software-firmware-development.md#configuration-management).
+
+**Exploration Controller Parameters:**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `speed` | float | 0.09 | Target linear velocity (m/s) |
+| `lookahead_distance` | float | 0.24 | Steering lookahead distance (m) |
+| `expansion_size` | int | 3 | Obstacle clearance grid cells |
+| `target_error` | float | 0.15 | Goal distance tolerance (m) |
+| `robot_r` | float | 0.2 | Robot collision radius (m) |
+
+**Quick Tuning Guidelines:**
+- Increase `speed` for faster exploration; decrease for tighter spaces
+- Increase `lookahead_distance` for smoother paths; decrease for reactive behavior
+- Increase `expansion_size` for more conservative obstacle avoidance
+- Decrease `target_error` for precise goal reaching; increase for speed
 
 ## Launch Sequence
 
-1. Source the workspace.
-2. Start navigation bringup.
-3. Confirm `/map`, `/odom`, and `/scan` are available.
+For detailed, step-by-step launch instructions with full commands and rationale, see [software-firmware-development.md](software-firmware-development.md#launch-sequences-verified).
+
+**Quick Reference:**
+
+**Gazebo Simulation (Navigation Only):**
+```bash
+# Terminal 1: Start Gazebo
+export TURTLEBOT3_MODEL=burger
+ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
+
+# Terminal 2: Start navigation (wait 5s for Gazebo to stabilize)
+sleep 5
+ros2 launch auto_explore nav_bringup.py use_sim_time:=true \
+    slam_start_delay_sec:=2.0 rviz_start_delay_sec:=2.0
+```
+
+**Physical Robot (Navigation Only):**
+```bash
+# Terminal 1: Start robot base
+ros2 launch turtlebot3_bringup robot.launch.py
+
+# Terminal 2: Start navigation (wait 10s for hardware initialization)
+sleep 10
+ros2 launch auto_explore nav_bringup.py use_sim_time:=false
+```
+
+**Verification Steps:**
+1. Source the workspace: `source ~/turtlebot3_ws/install/setup.bash`
+2. Confirm `/map`, `/odom`, and `/scan` topics are available: `ros2 topic list`
+3. Verify exploration path in RViz by enabling `/exploration_path` visualization
 
 ## Failure Handling
 
-- If the map is not available, the controller waits for SLAM.
-- If the path is blocked, the controller should reselect a frontier or terminate cleanly.
+For comprehensive error scenarios, fallback behaviors, and recovery procedures, see [interface-control-document.md](interface-control-document.md#error-and-fallback-behavior) and [software-firmware-development.md](software-firmware-development.md#troubleshooting-development-issues).
+
+**Common Navigation Failures:**
+
+**Map unavailable (SLAM not running):**
+- Exploration controller publishes zero velocity
+- FSM remains in EXPLORE; no frontiers can be identified
+- Recovery: Start SLAM Toolbox; confirm `/map` topic appears within 15 seconds
+
+**Path blocked (no route to frontier):**
+- A* algorithm returns empty path
+- Controller publishes zero velocity and waits
+- Recovery: SLAM updates map; controller retries next cycle (typically within 1-2 minutes)
+
+**LiDAR or odometry offline:**
+- Controller detects missing `/scan` or `/odom` data
+- Publishes safe zero velocity; navigation halts
+- Recovery: Restart sensor nodes; verify `/scan` and `/odom` topics are active
+
+**Marker detection fails:**
+- FSM remains in EXPLORE indefinitely
+- `/marker_detected` stays `false`
+- Recovery: Check camera, verify lighting, test with `ros2 run cv_bridge cv_bridge_demo_color`
+
+**Docking or shooter unavailable:**
+- Set `enable_docking:=false` and/or `enable_shooter:=false` at launch
+- FSM skips DOCK and LAUNCH states automatically
+- Recovery: Enable hardware controllers or accept exploration-only mission
 
 ## FSM Section
 
@@ -83,29 +189,80 @@ FSM logic is launched from `remote_laptop_src/launch/global_controller_bringup.p
 
 The finite state machine coordinates mission progression and subsystem handoff (explore, dock, launch, and completion).
 
-### State flow
+### State Flow and Transitions
 
-`EXPLORE -> DOCK -> LAUNCH -> EXPLORE -> END`
-
-### Core FSM interfaces
-
-- Subscribes to marker and completion signals.
-- Publishes mission state updates on `/states`.
-- Publishes shooter trigger mode on `/shoot_type`.
-
-### Launch controls
-
-- `enable_fsm` gates mission-controller startup.
-- `enable_docking` and `enable_shooter` gate downstream behavior.
-
-### FSM verification checks
-
-```bash
-ros2 topic echo /states
-ros2 topic echo /shoot_type
+```
+IDLE → EXPLORE → DOCK → LAUNCH → EXPLORE → END
 ```
 
-Expected behavior:
+**State Descriptions:**
 
-- Initial state publishes `EXPLORE`.
-- Transition events publish the next expected state without spurious loops.
+- **EXPLORE**: Frontier-based exploration active. Exploration controller seeks unmapped regions. Transitions to DOCK when marker is detected.
+- **DOCK**: Docking sequence in progress. Robot approaches and docks with stationary charging/marker station. Publishes docking velocity commands. Transitions to LAUNCH when docking completes (`/dock_done` signal received).
+- **LAUNCH**: Shooter engagement in progress. Shooter fires projectile at target. Transition time is minimum 15 seconds (`launch_min_duration_sec`). Transitions back to EXPLORE when shooter completes (`/shoot_done` signal received or timer expires).
+- **END**: Mission complete. FSM halts all motion and enters idle state. Triggered when all exploration objectives are met.
+
+**Transition Triggers:**
+- EXPLORE → DOCK: `/marker_detected` Boolean signal = `true`
+- DOCK → LAUNCH: `/dock_done` Boolean signal = `true`
+- LAUNCH → EXPLORE: `/shoot_done` Boolean signal = `true` OR launch minimum duration elapsed
+- EXPLORE/DOCK/LAUNCH → END: User termination or all mission objectives complete
+
+### Core FSM Interfaces
+
+For complete ROS topic and message type specifications, see [interface-control-document.md](interface-control-document.md#ros-topics).
+
+**Mission Controller Pub/Sub:**
+
+| Direction | Topic | Type | Purpose |
+|---|---|---|---|
+| Publishes | `/states` | String | Current state name (EXPLORE, DOCK, LAUNCH, END) |
+| Publishes | `/shoot_type` | String | Shooter trigger mode (static, dynamic, or idle) |
+| Publishes | `/cmd_vel` | Twist | Arbitrated velocity command (prioritizes docking over exploration) |
+| Subscribes | `/marker_detected` | Bool | Marker visibility from pose_publisher |
+| Subscribes | `/dock_done` | Bool | Dock completion from docking_controller |
+| Subscribes | `/shoot_done` | Bool | Shooter completion from shooter_controller |
+| Subscribes | `/map_explored` | Bool | Exploration completion from exploration_controller |
+| Subscribes | `/cmd_vel_nav` | Twist | Velocity from exploration_controller |
+| Subscribes | `/cmd_vel_docking` | Twist | Velocity from docking_controller |
+
+### Launch Controls
+
+- `enable_fsm` gates mission-controller startup (default: `true`)
+- `enable_navigation` gates exploration_controller startup (default: `true`)
+- `enable_markers` gates marker detection pipeline (controls pose_publisher)
+- `enable_pose_publisher` gates ArUco marker pose publisher (default: `true` when markers enabled)
+- `enable_docking` gates docking_controller startup and DOCK state transitions (default: `true`)
+- `enable_shooter` gates shooter_controller startup and LAUNCH state transitions (default: `true`)
+- `shooter_enable_hardware` enables physical GPIO actuation; set `false` for simulation (default: `false`)
+
+### FSM Verification Checks
+
+Verify FSM state transitions and topic flow:
+
+```bash
+# Monitor mission state
+ros2 topic echo /states
+
+# Monitor shooter trigger
+ros2 topic echo /shoot_type
+
+# Monitor exploration completion
+ros2 topic echo /map_explored
+
+# Monitor marker detection
+ros2 topic echo /marker_detected
+
+# Monitor docking status
+ros2 topic echo /dock_done
+
+# Monitor shooter status
+ros2 topic echo /shoot_done
+```
+
+**Expected behavior:**
+- Initial state publishes `EXPLORE`
+- Marker detection transitions to `DOCK` (mission_controller publishes marker trigger zone)
+- Docking completion transitions to `LAUNCH` (shooter mode published as `static` or `dynamic`)
+- Shooter completion transitions back to `EXPLORE`
+- No spurious state loops or rapid re-triggering
