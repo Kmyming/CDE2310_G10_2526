@@ -1,3 +1,7 @@
+## [2.16.1] - 2026-04-18
+### Documentation
+- docs(con-ops): Expanded the Concept of Operations document with detailed mission phases, system overview, operational sequences, and fault recovery scenarios.
+
 # Changelog
 
 ## [2.16.0] - 2026-04-18
