@@ -1,3 +1,8 @@
+## [2.16.2] - 2026-04-18
+
+### Fixed
+- fix(payload): CAD files restructuring
+
 # Changelog
 ## [2.16.1] - 2026-04-18
 ### Documentation
