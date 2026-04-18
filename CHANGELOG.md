@@ -1,3 +1,108 @@
+## [2.15.1] - 2026-04-18
+### Documentation
+- docs(interface): Documented ROS topic specifications, launch arguments, timing, and error handling.
+- docs(subsystem): Completed navigation and FSM subsystem design, state flow, and parameter tuning.
+- docs(development): Added configuration management guide and comprehensive troubleshooting procedures.
+
+## [2.15.0] - 2026-04-17
+### Added / Changed
+- feat(navigation): Enhanced frontier group selection and local obstacle avoidance in exploration.
+- feat(marker): Implemented a `/marker_detected` publisher in `Pose_publisher_V2_TF2.py` to indicate Aruco marker visibility.
+
+### Fixed
+- fix(shooter): Reverted and reorganized shooter delivery logic, including dynamic shot counting, and fine-tuned pinion engagement trim parameters for consistency.
+- fix(fsm): Improved FSM handling of docking failures and marker loss during docking.
+
+### Testing
+- test(shooter): Added a standalone servo isolation test script (`servo_isolation_test.py`).
+
+## [2.14.0] - 2026-04-15
+Introduced a two-pass dynamic delivery sequence for the shooter and improved RViz launch robustness.
+
+### Added / Changed
+- feat(shooter): Implemented a two-pass dynamic delivery sequence in `shooter_controller.py`, separating loading and launching phases for dynamic shots.
+- feat(launch): Added environment variable prefix to the RViz node in `nav_bringup.py` for cleaner launch and debugging.
+
+### Fixed
+- fix(auto_explore): Corrected a typo in the parameter retrieval method for 'marker_size_m' in `pose_publisher.py`.
+
+## [2.13.2] - 2026-04-15
+Finalized fine-tuned shooting parameters for improved performance and updated Aruco marker detection.
+
+### Fixed
+- fix(shooter): Fine-tuned multiple shooting parameters in `shooter_controller.py`, including `gate_settle_s` to `0.225`, `ball_drop_s` to `0.225`, `disengage_trim_per_extra_cycle_s` to `0.015`, `disengage_trim_per_extra_cycle_high_s` to `0.015`, `rack_hold_duration_s` to `0.2`, `rack_cycle_pause_s` to `0.3`, `delivery2_delay` to `0.1`, `delivery3_delay` to `7.1`, and adjusted `engage_profiles` values. The default `engage_profile` in `_get_engage_time_for_cycle` was also changed to `mild`.
+- fix(auto_explore): Adjusted the `marker_size_m` parameter in `pose_publisher.py` from `0.053` to `0.049` for improved Aruco marker detection accuracy.
+
+### Documentation
+- docs(shooter): Added instructions to `README.md` for activating the shooter node using `ros2 topic pub` commands for static and dynamic shooting.
+
+## [2.13.1] - 2026-04-15
+### Fixed
+- fix(docking): Implemented new watchdog timers (30s marker invisibility, 45s state timeout) in `docking_controller.py` to prevent the robot from getting stuck during docking.
+- fix(docking): Refactored state transitions in `docking_controller.py` to use a dedicated `set_state` method, ensuring consistent state management and watchdog resets.
+- fix(docking): Renamed the `MoveOnAruco` node to `DockingController` and adjusted `mid_tz_threshold` to 0.50 in `docking_controller.py`.
+
+## [2.13.0] - 2026-04-15
+Streamlined exploration by removing the yaw rotation sweep at waypoints and introduced a new tight maze simulation environment.
+
+### Added / Changed
+- feat(exploration): Eliminated the yaw rotation sweep at waypoints in `exploration_controller.py`, allowing the robot to transition immediately to the next waypoint for improved navigation efficiency.
+- feat(simulation): Added a new `tight_maze.world` Gazebo environment for testing navigation in constrained spaces.
+
+## [2.12.0] - 2026-04-15
+Major refactor of the docking controller, introduction of delayed startup for SLAM and RViz, and various parameter tunings for SLAM and shooter.
+
+### Added / Changed
+- feat(docking): Reworked the `docking_controller.py` FSM to a simpler align-and-approach logic, introducing new configurable parameters for approach speed, angular speed, alignment gain, tolerances, and docking distance.
+- feat(launch): Added `slam_start_delay_sec` and `rviz_start_delay_sec` launch arguments to `nav_bringup.py` to delay SLAM Toolbox and RViz startup using `TimerAction`.
+- feat(launch): Introduced `enable_pose_publisher` launch argument in `global_bringup.py` and `global_controller_bringup.py` to conditionally enable the `pose_publisher` node.
+
+### Fixed
+- fix(slam): Adjusted `throttle_scans`, `minimum_time_interval`, `transform_timeout`, `tf_buffer_duration`, and `scan_buffer_size` in `mapper_params_online_async.yaml` to improve SLAM stability and TF message handling.
+- fix(shooter): Tuned `gate_settle_s` and `ball_drop_s` parameters in `shooter_controller.py` for improved timing.
+
+### Documentation
+- docs(setup): Updated `README.md` with `shooter_pigpiod_host` in launch commands and added a reusable `start` shell function for simplified deployment.
+
+## [2.11.2] - 2026-04-14
+Refined the initial approach distance for the docking maneuver.
+
+### Fixed
+- fix(Docking): Adjusted the `mid_tz_threshold` parameter in `docking_controller.py` from 0.50 to 0.30 to refine the initial straight approach limit during docking.
+
+## [2.11.1] - 2026-04-14
+Ensured the shooter node has sufficient time to complete its operation during the launch sequence.
+
+### Fixed
+- fix(FSM): Implemented a minimum duration for the 'LAUNCH' state in `mission_controller.py` using `launch_min_duration_sec` to ensure the shooter node completes its cycle.
+- fix(FSM): Refined 'LAUNCH' state management in `mission_controller.py` to correctly handle `launch_completion_pending` and `launch_start_time` for robust shooter operation.
+
+## [2.11.0] - 2026-04-14
+Implemented a new post-launch backup maneuver to prevent collisions and adjusted the robot's yaw sweep rotation speed.
+
+### Added / Changed
+- feat(state): Implemented a new "BACKUP" state in `mission_controller.py` that triggers after a launch sequence, causing the robot to move backward at -0.1 m/s for 2 seconds before returning to exploration.
+- feat(auto_explore): Reduced the yaw sweep angular velocity in `exploration_controller.py` from `math.pi / 2` (90 deg/s) to `math.pi / 6` (30 deg/s).
+
+## [2.10.1] - 2026-04-14
+### Fixed
+- fix(FSM): Removed the `/zone` topic publisher and its associated logic from `mission_controller.py`.
+
+## [2.10.0] - 2026-04-14
+Implemented a new post-waypoint behavior for the robot to perform a yaw sweep, enhancing its ability to locate objects after reaching a destination.
+
+### Added / Changed
+- feat(auto_explore): Added yaw sweep functionality to `exploration_controller.py`, enabling the robot to perform a 360-degree rotation after reaching a waypoint to search for Aruco codes.
+
+## [2.9.6] - 2026-04-14
+Integrated a robust, filtered ultrasonic sensing system for improved dynamic payload delivery.
+
+### Fixed
+- fix(shooter): Implemented a new callback-based ultrasonic measurement system in `shooter_controller.py` using `pigpio.EITHER_EDGE` callbacks for improved accuracy.
+- fix(shooter): Added new parameters for ultrasonic filtering and calibration: `ultrasonic_sample_count`, `ultrasonic_sample_gap_s`, `ultrasonic_min_distance_m`, `ultrasonic_max_distance_m`, and `ultrasonic_temperature_c`.
+- fix(shooter): Implemented median filtering for ultrasonic distance readings and a temperature-compensated `_speed_of_sound_m_s` calculation.
+- fix(shooter): Ensured proper cleanup of the ultrasonic callback and `ultrasonic_trigger_pin` in `destroy_node`.
+
 ## [2.9.5] - 2026-04-13
 Tuned various shooter parameters and refined timing logic for improved static payload delivery.
 
