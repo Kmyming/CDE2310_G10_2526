@@ -3,7 +3,7 @@ title: Requirements Specification
 description: Mission requirements, constraints, and traceability.
 ---
 
-# 🔗 Navigation
+## 🔗 Navigation
 
 - [Home](index.md)
 - [Requirements Specification](requirements-specification.md)

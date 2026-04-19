@@ -3,7 +3,7 @@ title: Software Subsystem: ArUco Marker Detection
 description: Camera-based ArUco detection and pose publication.
 ---
 
-# 🔗 Navigation
+## 🔗 Navigation
 
 - [Home](index.md)
 - [Requirements Specification](requirements-specification.md)

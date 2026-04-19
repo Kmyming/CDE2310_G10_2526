@@ -3,7 +3,7 @@ title: Concept of Operations
 description: Operator workflow and mission behavior.
 ---
 
-# 🔗 Navigation
+## 🔗 Navigation
 
 - [Home](index.md)
 - [Requirements Specification](requirements-specification.md)
