@@ -1,3 +1,65 @@
+## [2.16.8] - 2026-04-19
+Expanded and updated the testing documentation with detailed physical robot test results and subsystem summaries for ArUco marker detection and docking.
+
+### Documentation
+- docs(testing): Added comprehensive physical robot testing results and summaries for the ArUco marker detection subsystem.
+- docs(testing): Documented physical robot testing results and summaries for the docking subsystem, including the evolution of its control logic.
+- docs(testing): Updated integration testing procedures and expected behaviors for marker detection and full system bringup.
+
+## [2.16.7] - 2026-04-19
+Enhanced the Concept of Operations document with a visual representation of the system's workflow.
+
+### Documentation
+- docs(con-ops): Added a system workflow flowchart to the Concept of Operations document.
+
+## [2.16.6] - 2026-04-19
+Comprehensive update to the ArUco marker detection software subsystem documentation.
+
+### Documentation
+- docs(aruco): Provided comprehensive documentation for the ArUco marker detection subsystem, detailing its design, detection pipeline, core interfaces (topics, parameters), pose estimation, TF publication, debug behavior, and verification procedures.
+
+## [2.16.5] - 2026-04-19
+
+### Documentation
+- docs(fsm): Updated the Finite State Machine documentation to align with implementation, including the addition of a BACKUP state, clarification of velocity multiplexing, and revised state descriptions and transition triggers.
+
+## [2.16.4] - 2026-04-19
+Refined the High Level Design document with expanded details on system architecture, data flow, and subsystem operations.
+
+### Fixed
+- fix(docs): Removed the redundant 'docshigh-level-design.md' file.
+
+### Documentation
+- docs(high-level-design): Expanded and refined the High Level Design document with detailed sections on system overview, deployment, data flow, mission states, and subsystem descriptions.
+
+## [2.16.3] - 2026-04-19
+### Documentation
+- docs(high-level-design): Added a comprehensive High Level Design document detailing system architecture, data flow, mission states, and subsystem descriptions.
+
+## [2.16.2] - 2026-04-19
+### Documentation
+- docs(requirements-spec): Added a comprehensive requirements specification document covering functional, non-functional, performance, and safety requirements.
+
+# Changelog
+## [2.16.1] - 2026-04-18
+### Documentation
+- docs(con-ops): Expanded the Concept of Operations document with detailed mission phases, system overview, operational sequences, and fault recovery scenarios.
+
+## [2.16.0] - 2026-04-18
+Iterative redesign of the payload launcher for improved feeding, increased launch force, and reduced gear slipping, based on testing results.
+### Added / Changed
+- feat(payload): Added servo gate mount
+- feat (payload): launcher design iteration to prevent gear slipping (add servo cover, reduce servo screw hole diameter, reduce gear distance, increase wall thickness to reduce launcher flex)
+- feat (payload): moved ball stop further up to reduce feeding jam and increase launch distance
+- feat (payload): side wall addition to prevent ball rolling out during feeding
+- feat (payload): increased launcher tilt to reduce ball falling out of launcher
+
+## [2.15.1] - 2026-04-18
+### Documentation
+- docs(interface): Documented ROS topic specifications, launch arguments, timing, and error handling.
+- docs(subsystem): Completed navigation and FSM subsystem design, state flow, and parameter tuning.
+- docs(development): Added configuration management guide and comprehensive troubleshooting procedures.
+
 ## [2.15.0] - 2026-04-17
 ### Added / Changed
 - feat(navigation): Enhanced frontier group selection and local obstacle avoidance in exploration.
@@ -9,6 +71,10 @@
 
 ### Testing
 - test(shooter): Added a standalone servo isolation test script (`servo_isolation_test.py`).
+
+## [2.14.1] - 2026-04-16
+### Fixed
+- fix(docking): Recalibrated docking parameters in `docking_controller.py` by adjusting `mid_tz_threshold` to `0.30` and introducing a corrective turn during final alignment for improved centering.
 
 ## [2.14.0] - 2026-04-15
 Introduced a two-pass dynamic delivery sequence for the shooter and improved RViz launch robustness.
@@ -133,7 +199,6 @@ Refactored parameter loading for navigation and SLAM to use ROS 2 parameter serv
 ### Documentation
 - docs(README): Revised `README.md` to document the removal of the marker logger and include a new section for troubleshooting launch file updates.
 
-# Changelog
 ## [2.9.2] - 2026-04-12
 Refined docking activation logic so the docking controller only engages when the FSM is in the docking state, preventing unintended docking behaviour during other mission phases.
 
