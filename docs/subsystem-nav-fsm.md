@@ -187,26 +187,45 @@ For comprehensive error scenarios, fallback behaviors, and recovery procedures, 
 
 ### Purpose
 
-The finite state machine coordinates mission progression and subsystem handoff (explore, dock, launch, and completion).
+The finite state machine coordinates mission progression and subsystem handoff (explore, dock, launch, and completion). The FSM also acts as a velocity multiplexer, selecting between navigation (`/cmd_vel_nav`) and docking (`/cmd_vel_docking`) commands based on the active state.
 
 ### State Flow and Transitions
 
 ```
-IDLE → EXPLORE → DOCK → LAUNCH → EXPLORE → END
+IDLE → EXPLORE → DOCK → LAUNCH → BACKUP → EXPLORE → ... → END
 ```
+### FSM State Diagram
 
+```mermaid
+flowchart TD
+    IDLE(["IDLE<br>System inactive"]) -->|startup| EXPLORE
+
+    EXPLORE["EXPLORE<br>Frontier navigation"] -->|/marker_detected = True| DOCK
+    EXPLORE -->|/map_explored = True<br>AND marker_count ≥ required| END
+
+    DOCK["DOCK<br>Docking controller active"] -->|/dock_done = True| LAUNCH
+    DOCK -->|/dock_done = False<br>or timeout| EXPLORE
+
+    LAUNCH["LAUNCH<br>Shooter active"] -->|/shoot_done + min duration| BACKUP
+
+    BACKUP["BACKUP<br>Reverse motion (2s)"] --> EXPLORE
+
+    END(["END<br>Mission complete<br>FSM stops"])
+```
 **State Descriptions:**
 
 - **EXPLORE**: Frontier-based exploration active. Exploration controller seeks unmapped regions. Transitions to DOCK when marker is detected.
 - **DOCK**: Docking sequence in progress. Robot approaches and docks with stationary charging/marker station. Publishes docking velocity commands. Transitions to LAUNCH when docking completes (`/dock_done` signal received).
 - **LAUNCH**: Shooter engagement in progress. Shooter fires projectile at target. Transition time is minimum 15 seconds (`launch_min_duration_sec`). Transitions back to EXPLORE when shooter completes (`/shoot_done` signal received or timer expires).
-- **END**: Mission complete. FSM halts all motion and enters idle state. Triggered when all exploration objectives are met.
+- **END**: Mission complete. FSM stops all motion and terminates execution by cancelling the control loop. No further state transitions occur.
+- **BACKUP**: Robot reverses for a fixed duration (2 seconds) after payload delivery to safely disengage from the docking area before resuming exploration.
 
 **Transition Triggers:**
 - EXPLORE → DOCK: `/marker_detected` Boolean signal = `true`
 - DOCK → LAUNCH: `/dock_done` Boolean signal = `true`
-- LAUNCH → EXPLORE: `/shoot_done` Boolean signal = `true` OR launch minimum duration elapsed
-- EXPLORE/DOCK/LAUNCH → END: User termination or all mission objectives complete
+- LAUNCH → BACKUP: `/shoot_done = True` AND minimum launch duration elapsed
+- BACKUP → EXPLORE: Backup timer completed
+- EXPLORE → END: `/map_explored = True` AND `marker_count ≥ required_markers`
 
 ### Core FSM Interfaces
 
