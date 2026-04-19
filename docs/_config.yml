@@ -1,10 +1,12 @@
 title: ""
 description: ""
-theme: minima
+remote_theme: jekyll/minima
 markdown: kramdown
+plugins:
+  - jekyll-remote-theme
 defaults:
   - scope:
       path: ""
       type: "pages"
     values:
-      layout: default
+      layout: page
