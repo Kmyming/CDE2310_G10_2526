@@ -1,6 +1,4 @@
 ---
-title: Areas for Improvement
-description: Limitations, future work, and follow-up tasks.
 ---
 
 ## 🔗 Navigation

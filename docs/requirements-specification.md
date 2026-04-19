@@ -1,6 +1,4 @@
 ---
-title: Requirements Specification
-description: Mission requirements, constraints, and traceability.
 ---
 
 ## 🔗 Navigation
