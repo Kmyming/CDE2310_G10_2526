@@ -68,6 +68,24 @@ All subsystems communicate over ROS 2 topics. The FSM acts as the central arbite
 
 ---
 
+
+## System Workflow Flowchart
+
+```mermaid
+flowchart TD
+    A[Start / Mission Begin] --> B[Navigation / Explore]
+    B --> C{Unvisited marker detected?}
+    C -->|No| B
+    C -->|Yes| D[Docking]
+    D --> E{Docking successful?}
+    E -->|No| B
+    E -->|Yes| F[Launching]
+    F --> G[Backup]
+    G --> H{Both delivery zones completed and map fully explored?}
+    H -->|No| B
+    H -->|Yes| I[End Mission]
+```
+
 ## Startup Sequence
 
 1. Power on the TurtleBot3 and the Raspberry Pi. Confirm the LiDAR, camera, and motor controller are active.
