@@ -3,7 +3,8 @@ title: High Level Design
 description: System architecture and mission data flow.
 ---
 
-# 🔗 Navigation
+## 🔗 Navigation
+
 - [Home](index.md)
 - [Requirements Specification](requirements-specification.md)
 - [Concept of Operations](con-ops.md)
