@@ -1,3 +1,9 @@
+## [2.16.6] - 2026-04-19
+Comprehensive update to the ArUco marker detection software subsystem documentation.
+
+### Documentation
+- docs(aruco): Provided comprehensive documentation for the ArUco marker detection subsystem, detailing its design, detection pipeline, core interfaces (topics, parameters), pose estimation, TF publication, debug behavior, and verification procedures.
+
 ## [2.16.5] - 2026-04-19
 
 ### Documentation
