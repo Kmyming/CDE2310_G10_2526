@@ -2,6 +2,7 @@ title: ""
 description: ""
 remote_theme: jekyll/minima
 markdown: kramdown
+header_pages: []
 plugins:
   - jekyll-remote-theme
 defaults:
