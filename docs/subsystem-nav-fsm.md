@@ -151,8 +151,6 @@ graph TD
     style N fill:#ffccbc
     style T fill:#ffe0b2
     style Z fill:#ffe0b2
-
-
 ## Control Loop
 
 The exploration controller runs a responsive real-time control loop:
