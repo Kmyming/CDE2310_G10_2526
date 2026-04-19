@@ -632,4 +632,4 @@ Run robot bringup and launch integrated mission stack with real-time settings an
 **Observations**:
 - Robot completed the full duration without triggering the OpenCR low-voltage alarm (threshold: 11V).
 - Confirmed battery capacity remains sufficient for the 25-minute requirement, consistent with the predicted worst-case runtime of 54.9 minutes.
-- No system brownouts or reboots occurred during concurrent movement and servo actuation.
+- No system brownouts or reboots occurred during concurrent movement and servo actuation
