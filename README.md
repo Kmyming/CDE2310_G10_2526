@@ -7,7 +7,7 @@
 Welcome to the official repository for our CDE2310 System Design project — a fully autonomous robot capable of:
 
 - 🌐 Frontier exploration, real-time mapping, & FSM Orchestration
-- 🌡️ Detecting static and dynamic delivery zones via ArUco Markers
+- 📷 Detecting static and dynamic delivery zones via ArUco Markers
 - 🚀 Dock at delivery zones to launch ping pong ball payloads into delivery receptacles
 
 ---
