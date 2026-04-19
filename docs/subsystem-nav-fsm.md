@@ -121,14 +121,7 @@ graph TD
     
     M -->|Path Exists| O["Extract Waypoint Sequence<br/>from A* Path"]
     O --> P["Apply Spline Smoothing<br/>scipy B-spline Interpolation"]
-    P --> Q["Verify Smoothed Path<br/>Collision-Free Check"]
-    
-    Q --> R{Collision<br/>Detected?}
-    
-    R -->|Unsafe| S["Fallback to Original<br/>Waypoint Path"]
-    S --> T["Publish /exploration_path<br/>RViz Visualization"]
-    
-    R -->|Safe| T
+    P --> T["Publish /exploration_path<br/>RViz Visualization"]
     
     T --> U["Compute Steering Control<br/>Lookahead Distance Method"]
     U --> V["Calculate Angular Velocity<br/>from Path Curvature"]
