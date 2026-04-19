@@ -100,10 +100,11 @@ ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
 Check:
 
 ```bash
-ros2 topic echo /aruco/debug
+ros2 topic echo /tf
+ros2 topic echo /marker_detected
 ```
 
-Expected: heartbeat JSON plus marker JSON when marker is in view.
+Expected: On topic `/tf` several different frame data would be visible, including Aruco Pose data with header frame 'camera_optical_frame' and child frame 'aruco_marker_*marker id*'. On marker detected you can expect boolean true on detection otherwise false. 
 
 ### 6) Docking controller only
 
