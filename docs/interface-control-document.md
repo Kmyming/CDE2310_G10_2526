@@ -1,6 +1,4 @@
 ---
-title: Interface Control Document
-description: ROS topic, launch argument, and integration contracts.
 ---
 
 ## 🔗 Navigation
