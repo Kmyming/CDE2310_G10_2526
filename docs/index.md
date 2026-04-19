@@ -1,6 +1,5 @@
 ---
 ---
-# Fundamentals of System Design – CDE2310
 
 ## System Overview
 
