@@ -345,3 +345,70 @@ Run robot bringup and launch integrated mission stack with real-time settings an
 	- node lists (`ros2 node list`)
 	- launch logs from `~/.ros/log/`
 	- RViz screenshots or short run recordings
+   
+# Testing Documentation: Electrical Subsystem
+
+## Test Strategy
+
+- **Unit Validation**: Confirm individual component functionality (Servos, Ultrasonic) before full integration.
+- **Signal Integrity**: Verify logic level compatibility between the Raspberry Pi and actuators.
+- **Power Reliability**: Ensure the power distribution network handles currents without system brownouts.
+- **Mission Endurance**: Validate the 25-minute operational requirement under real-world conditions.
+
+## Subsystem Unit Tests
+
+### 1) MG90S PWM Logic Level Test
+
+**Objective**: Verify MG90S response to different control voltages.
+
+**Procedure**: Initially connected MG90S directly to RPi GPIO 13. Following failure, integrated BOB-11978 Level Shifter. Verified signal using a Digital Multimeter.
+
+**Observations**:
+- At 3.3V PWM: The servo remained still and failed to actuate.
+- At 5.0V PWM (via BOB-11978): Servo responded correctly to PWM commands.
+
+**Result**: ✅ Success (Requires Level Shifter)
+
+---
+
+### 2) HC-SR04 Voltage Divider Safety
+
+**Objective**: Protect RPi GPIO from 5V Echo signals.
+
+**Procedure**: Implemented 1kΩ-2kΩ voltage divider. Measured output voltage with a Digital Multimeter during active ranging.
+
+- **Expected**: Signal stepped down to ~3.3V.
+- **Actual**: ~3.33V measured at GPIO 24.
+
+**Result**: ✅ Success
+
+---
+
+### 3) Startup Stability Test
+
+**Objective**: Ensure "No unintended actuation of servos or drive motors on startup" (Req 2.4).
+
+**Procedure**: Monitored SG90 and MG90S positions during OpenCR and RPi boot cycles.
+
+**Observations**: Both servos successfully initialized to stop/closed pulse widths without jitter or movement before commands were issued.
+
+**Result**: ✅ Success
+
+---
+
+### 4) Full Endurance Run (Physical)
+
+**Test Environment:** NUS IDP Studio 2  
+**Test Date:** 13/04/2026 – 15/04/2026  
+**Robot State:** Integrated launcher mechanism and navigation stack active.
+
+| Metric | Target | Result |
+|--------|--------|--------|
+| Outcome | Success | Mission Completed |
+| Run Time | 25 min 0 s | 25 min 0 s |
+| Battery Voltage | >11 V | >11 V (Alarm stayed silent) |
+
+**Observations**:
+- Robot completed the full duration without triggering the OpenCR low-voltage alarm (threshold: 11V).
+- Confirmed battery capacity remains sufficient for the 25-minute requirement, consistent with the predicted worst-case runtime of 54.9 minutes.
+- No system brownouts or reboots occurred during concurrent movement and servo actuation.
