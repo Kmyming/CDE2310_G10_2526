@@ -96,8 +96,8 @@ The complete navigation workflow operates as follows:
 graph TD
     A["Navigation System Start<br/>10 Hz Control Loop"] --> B{SLAM Map Available?}
     
-    B -->|No| C["Wait for SLAM<br/>Toolbox Initialization"]
-    C --> C1["Publish Zero Velocity<br/>Prevent Uncontrolled Motion"]
+    B -->|No| C["Wait for SLAM Toolbox Initialization<br/>Until /map, /odom, and /scan Are Available"]
+    C --> C1["No /cmd_vel_nav Published in This Branch<br/>Sleep/Continue and Retry Next Cycle"]
     C1 --> A
     
     B -->|Yes| D["Read Current Robot Pose<br/>from /odom Topic"]
