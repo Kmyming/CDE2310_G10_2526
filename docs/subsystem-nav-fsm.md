@@ -88,6 +88,78 @@ The exploration controller computes safe, smooth paths from the current robot po
 - Input: `/map` (OccupancyGrid), `/odom` (current pose), `/scan` (immediate obstacles)
 - Output: `/cmd_vel_nav` (Twist commands to FSM), `/exploration_path` (Path visualization)
 
+### Navigation System Flowchart
+
+The complete navigation workflow operates as follows:
+
+```mermaid
+graph TD
+    A["Navigation System Start<br/>10 Hz Control Loop"] --> B{SLAM Map Available?}
+    
+    B -->|No| C["Wait for SLAM<br/>Toolbox Initialization"]
+    C --> C1["Publish Zero Velocity<br/>Prevent Uncontrolled Motion"]
+    C1 --> A
+    
+    B -->|Yes| D["Read Current Robot Pose<br/>from /odom Topic"]
+    D --> E["Read Occupancy Grid<br/>from /map Topic"]
+    E --> F["Detect Frontiers<br/>Boundary Between Known/Unknown Space"]
+    
+    F --> G{Any Frontiers<br/>Detected?}
+    
+    G -->|No Frontiers| H["Publish /map_explored = true<br/>Signal Exploration Complete"]
+    H --> I["Publish /cmd_vel_nav: Zero Velocity<br/>FSM Transitions to END State"]
+    I --> J["End Navigation Loop"]
+    
+    G -->|Frontiers Found| K["Select Best Frontier Goal<br/>Nearest or Highest Priority"]
+    K --> L["Run A* Path Planning Algorithm<br/>Current Pose → Frontier Goal"]
+    
+    L --> M{Valid Path<br/>Found?}
+    
+    M -->|No Route Exists| N["Publish Zero Velocity<br/>Wait for Map Update"]
+    N --> N1["Retry Planning Next Cycle"]
+    N1 --> A
+    
+    M -->|Path Exists| O["Extract Waypoint Sequence<br/>from A* Path"]
+    O --> P["Apply Spline Smoothing<br/>scipy B-spline Interpolation"]
+    P --> Q["Verify Smoothed Path<br/>Collision-Free Check"]
+    
+    Q --> R{Collision<br/>Detected?}
+    
+    R -->|Unsafe| S["Fallback to Original<br/>Waypoint Path"]
+    S --> T["Publish /exploration_path<br/>RViz Visualization"]
+    
+    R -->|Safe| T
+    
+    T --> U["Compute Steering Control<br/>Lookahead Distance Method"]
+    U --> V["Calculate Angular Velocity<br/>from Path Curvature"]
+    V --> W["Read Speed Parameter<br/>from config/params.yaml"]
+    W --> X["Compute Linear Velocity<br/>Limited by Speed Parameter"]
+    X --> Y["Create Twist Command<br/>linear.x, angular.z"]
+    
+    Y --> Z["Publish /cmd_vel_nav<br/>Send to FSM Multiplexer"]
+    
+    Z --> AA{Robot at<br/>Goal?<br/>Distance < target_error}
+    
+    AA -->|Yes| AB["Frontier Reached<br/>Advance to Next Frontier"]
+    AB --> A
+    
+    AA -->|No| AC["Continue Following Path<br/>Next Control Cycle"]
+    AC --> A
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style G fill:#fff3e0
+    style M fill:#fff3e0
+    style R fill:#fff3e0
+    style AA fill:#fff3e0
+    style H fill:#c8e6c9
+    style I fill:#c8e6c9
+    style J fill:#f3e5f5
+    style N fill:#ffccbc
+    style T fill:#ffe0b2
+    style Z fill:#ffe0b2
+
+
 ## Control Loop
 
 The exploration controller runs a responsive real-time control loop:
@@ -98,6 +170,82 @@ The exploration controller runs a responsive real-time control loop:
 - **Failsafe**: If map unavailable, controller waits for SLAM before planning
 
 For detailed timing specifications including startup delays and topic publishing frequencies, see [interface-control-document.md](interface-control-document.md#timing-and-rates).
+
+### Sensor Input Integration
+
+```mermaid
+graph LR
+    subgraph "Sensor Input"
+        LIDAR["/scan<br/>LaserScan"]
+        ODOM["/odom<br/>Odometry<br/>Robot Pose & Velocity"]
+        MAP["/map<br/>OccupancyGrid<br/>from SLAM"]
+    end
+    
+    subgraph "Navigation Processing"
+        FRONTIER["Frontier<br/>Detection"]
+        ASTAR["A* Path<br/>Planning"]
+        SMOOTH["Spline<br/>Smoothing"]
+        STEER["Steering<br/>Control"]
+    end
+    
+    subgraph "Output Commands"
+        CMDVEL["/cmd_vel_nav<br/>Twist"]
+        PATH["/exploration_path<br/>Path Visualization"]
+        EXPLORED["/map_explored<br/>Bool Status"]
+    end
+    
+    MAP --> FRONTIER
+    MAP --> ASTAR
+    ODOM --> ASTAR
+    ODOM --> STEER
+    LIDAR --> STEER
+    
+    FRONTIER --> ASTAR
+    ASTAR --> SMOOTH
+    SMOOTH --> STEER
+    
+    STEER --> CMDVEL
+    ASTAR --> PATH
+    FRONTIER --> EXPLORED
+    
+    style LIDAR fill:#90caf9
+    style ODOM fill:#90caf9
+    style MAP fill:#90caf9
+    style FRONTIER fill:#fff9c4
+    style ASTAR fill:#fff9c4
+    style SMOOTH fill:#fff9c4
+    style STEER fill:#fff9c4
+    style CMDVEL fill:#81c784
+    style PATH fill:#81c784
+    style EXPLORED fill:#81c784
+```
+
+### Frontier Detection to Goal Selection
+
+```mermaid
+graph TD
+    A["Occupancy Grid from /map"] --> B["Identify All Frontier Cells<br/>Where unknown meets known space"]
+    B --> C["Cluster Frontier Cells<br/>Group nearby frontiers"]
+    C --> D["Compute Frontier Centers<br/>Centroid of each cluster"]
+    D --> E["Calculate Distance to Each<br/>Frontier from Robot Pose"]
+    E --> F["Evaluate Frontier Value<br/>Size, distance, exploration potential"]
+    F --> G{Selection<br/>Strategy}
+    G -->|Nearest| H["Choose Closest Frontier"]
+    G -->|Value-Based| I["Choose Highest Value"]
+    H --> J["Set as Goal<br/>for Next Navigation"]
+    I --> J
+    J --> K["Initiate A* Path Planning<br/>Robot Pose → Frontier Goal"]
+    
+    style A fill:#b3e5fc
+    style B fill:#fff9c4
+    style C fill:#fff9c4
+    style D fill:#fff9c4
+    style E fill:#fff9c4
+    style F fill:#fff9c4
+    style G fill:#ffcc80
+    style J fill:#c8e6c9
+    style K fill:#c8e6c9
+```
 
 ## Parameters and Tuning
 
