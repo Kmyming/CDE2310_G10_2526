@@ -1,3 +1,8 @@
+## [2.16.5] - 2026-04-19
+
+### Documentation
+- docs(fsm): Updated the Finite State Machine documentation to align with implementation, including the addition of a BACKUP state, clarification of velocity multiplexing, and revised state descriptions and transition triggers.
+
 ## [2.16.4] - 2026-04-19
 Refined the High Level Design document with expanded details on system architecture, data flow, and subsystem operations.
 
