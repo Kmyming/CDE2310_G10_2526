@@ -3,7 +3,7 @@ title: Software and Firmware Development
 description: Build, launch, versioning, and CI workflow documentation.
 ---
 
-# 🔗 Navigation
+## 🔗 Navigation
 
 - [Home](index.md)
 - [Requirements Specification](requirements-specification.md)
@@ -170,7 +170,7 @@ auto_explore
 
 ### Laptop shooter dependency
 
-Install pigpio Python client on the laptop:
+Install pigpio Python client on the laptop and the Raspberry Pi:
 
 ```bash
 pip3 install pigpio
@@ -180,40 +180,258 @@ pip3 install pigpio
 
 The Pi should run pigpiod and show its IP at boot.
 
-If needed, run:
+Add these commands to `~/.bashrc` on the Raspberry Pi during setup:
 
 ```bash
+cat >> ~/.bashrc << 'EOF'
 sudo pigpiod
 hostname -I
+EOF
+
+source ~/.bashrc
 ```
 
-### Real-robot shooter launch rule
+### Cleanup scripts setup
 
-Copy the Pi IP shown at boot and pass it to `shooter_pigpiod_host`.
+#### laptop cleanup script:
+Create the cleanup script in the laptop home directory and then add the alias to `~/.bashrc`.
 
-Direct command:
+1. Create `~/cleanup_duplicate_drivers.sh` in the home directory with the following content:
 
 ```bash
-ros2 launch auto_explore global_controller_bringup.py use_sim_time:=false \
-	enable_fsm:=true enable_navigation:=true enable_markers:=true \
-	enable_pose_publisher:=true enable_docking:=true enable_shooter:=true \
-	shooter_enable_hardware:=true shooter_pigpiod_host:=<PI_IP_FROM_BOOT>
+cat > ~/cleanup_duplicate_drivers.sh << 'EOF'
+#!/bin/bash
+# cleanup_duplicate_drivers.sh
+# Removes duplicate turtlebot3 driver processes that cause queue-full errors
+# Run this BEFORE launching the system with 'start' command
+
+set -e
+
+echo "=========================================="
+echo "TurtleBot3 Duplicate Driver Cleanup"
+echo "=========================================="
+echo ""
+
+echo "[1/5] Checking for duplicate launches on robot..."
+DUPLICATE_COUNT=$(sshrp "ps aux | grep robot.launch.py | grep -v grep | wc -l" 2>/dev/null || echo "0")
+
+if [ "$DUPLICATE_COUNT" -le 0 ]; then
+    echo "     ✓ No duplicate launches found - system is clean"
+else
+    echo "     ⚠ Found $DUPLICATE_COUNT launch instances (should be 1 or 0)"
+fi
+
+echo ""
+echo "[2/5] Stopping all robot launch processes remotely..."
+sshrp "pkill -9 -f 'robot.launch.py' 2>/dev/null && echo '      Launches stopped'" || true
+sleep 1
+
+echo ""
+echo "[3/5] Cleaning up driver processes (ld08_driver, robot_state_publisher, v4l2_camera)..."
+sshrp "pkill -9 -f 'ld08_driver|robot_state_publisher|v4l2_camera' 2>/dev/null && echo '      Drivers cleaned'" || true
+sleep 2
+
+echo ""
+echo "[4/5] Restarting ROS daemon on laptop for clean graph..."
+ros2 daemon stop >/dev/null 2>&1 || true
+sleep 1
+ros2 daemon start >/dev/null 2>&1
+echo "      ✓ Daemon restarted"
+
+echo ""
+echo "[5/5] Verifying cleanup - checking ROS node graph..."
+NODE_COUNT=$(ros2 node list 2>&1 | wc -l)
+
+if ros2 node list 2>&1 | grep -q "nodes in the graph that share an exact name"; then
+    echo "      ⚠ WARNING: Still detected duplicate node names"
+    echo ""
+    echo "Current nodes:"
+    ros2 node list 2>&1 | tail -n +2
+else
+    echo "      ✓ Node graph is clean (no duplicate warnings)"
+    if [ "$NODE_COUNT" -gt 1 ]; then
+        echo ""
+        echo "Active nodes:"
+        ros2 node list 2>&1 | grep -v WARNING || true
+    fi
+fi
+
+echo ""
+echo "=========================================="
+echo "Cleanup Complete!"
+echo "=========================================="
+echo ""
+echo "Next step: Run 'start <robot_ip>' to launch the system"
+echo "Example:   start 172.20.10.5"
+echo ""
+EOF
 ```
+
+2. Make the script executable:
+
+```bash
+chmod +x ~/cleanup_duplicate_drivers.sh
+```
+
+3. Add the alias to the laptop `~/.bashrc`:
+
+```bash
+alias cleanup='~/cleanup_duplicate_drivers.sh'
+```
+
+4. Reload the shell configuration:
+
+```bash
+source ~/.bashrc
+```
+
+This script depends on the `sshrp` alias already defined in the laptop `~/.bashrc`, because it uses that alias to reach the Raspberry Pi and stop duplicate robot-side driver processes.
+
+#### RPi cleanup script:
+
+Set up an RPi-side cleanup command so `rosbustop` can be run as a normal bash command.
+
+1. Create the cleanup script in the RPi home directory:
+
+```bash
+cat > ~/rosbu_cleanup.sh << 'EOF'
+#!/bin/bash
+# rosbu_cleanup.sh
+# Force-clean TurtleBot3 bringup and camera stacks on RPi
+
+set +e
+
+echo "=========================================="
+echo "RPi ROS Bringup/Camera Cleanup (rosbustop)"
+echo "=========================================="
+
+TARGET_PATTERNS=(
+    "robot.launch.py"
+    "ld08_driver"
+    "robot_state_publisher"
+    "turtlebot3_ros"
+    "v4l2_camera_node"
+)
+
+echo "[1/4] Killing process groups for bringup/camera targets..."
+for pattern in "${TARGET_PATTERNS[@]}"; do
+    for pid in $(pgrep -f "$pattern" 2>/dev/null); do
+        pgid=$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ')
+        if [ -n "$pgid" ]; then
+            kill -TERM -- -"$pgid" 2>/dev/null || true
+            sleep 0.05
+            kill -KILL -- -"$pgid" 2>/dev/null || true
+        fi
+    done
+done
+
+echo "[2/4] Killing child camera processes..."
+for cam_parent in $(pgrep -f "v4l2_camera|camera" 2>/dev/null); do
+    pkill -TERM -P "$cam_parent" 2>/dev/null || true
+    sleep 0.05
+    pkill -KILL -P "$cam_parent" 2>/dev/null || true
+done
+
+echo "[3/4] Fallback TERM/KILL sweep by process name..."
+for pattern in "${TARGET_PATTERNS[@]}"; do
+    pkill -TERM -f "$pattern" 2>/dev/null || true
+done
+sleep 0.2
+for pattern in "${TARGET_PATTERNS[@]}"; do
+    pkill -KILL -f "$pattern" 2>/dev/null || true
+done
+
+echo "[4/4] Cleanup complete. Remaining matching processes (if any):"
+for pattern in "${TARGET_PATTERNS[@]}"; do
+    pgrep -af "$pattern" 2>/dev/null || true
+done
+
+echo "Done: bringup and camera processes force-cleaned."
+EOF
+```
+
+2. Make the script executable:
+
+```bash
+chmod +x ~/rosbu_cleanup.sh
+```
+
+3. Add the alias to `~/.bashrc` on the RPi:
+
+```bash
+echo "alias rosbustop='~/rosbu_cleanup.sh'" >> ~/.bashrc
+```
+
+4. Reload shell config:
+
+```bash
+source ~/.bashrc
+```
+
+5. Verify command registration:
+
+```bash
+type rosbustop
+```
+
+6. Run cleanup before relaunching bringup/camera stacks:
+
+```bash
+rosbustop
+```
+
+### Real-robot launch alias setup
 
 Reusable shell helper:
 
 ```bash
 cat >> ~/.bashrc << 'EOF'
 start () {
-	if [ -z "$1" ]; then
-		echo "Usage: start <PI_IP>"
-		return 1
-	fi
+    if [ -z "$1" ]; then
+        read -rp "Pi IP: " PI_IP
+    else
+        PI_IP="$1"
+    fi
 
-	ros2 launch auto_explore global_controller_bringup.py use_sim_time:=false \
-		enable_fsm:=true enable_navigation:=true enable_markers:=true \
-		enable_pose_publisher:=true enable_docking:=true enable_shooter:=true \
-		shooter_enable_hardware:=true shooter_pigpiod_host:="$1"
+    if [ -z "$2" ]; then
+        MARKERS_ENABLED="true"
+    else
+        MARKERS_ENABLED="$2"
+    fi
+
+    if [ -z "$3" ]; then
+        POSE_PUBLISHER_ENABLED="true"
+    else
+        POSE_PUBLISHER_ENABLED="$3"
+    fi
+
+    # Reset potentially stale overlays before launching.
+    unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH PYTHONPATH
+    source /opt/ros/humble/setup.bash
+    source ~/turtlebot3_ws/install/local_setup.bash
+
+    # Prevent RViz from picking incompatible snap libc/pthread shims.
+    unset LD_PRELOAD
+    if [ -n "$LD_LIBRARY_PATH" ]; then
+        export LD_LIBRARY_PATH="$(printf '%s' "$LD_LIBRARY_PATH" | tr ':' '\n' | grep -v '^/snap/core20/current/lib' | paste -sd: -)"
+    fi
+
+    # Prevent duplicate local controller nodes from prior interrupted launches.
+    pkill -f '/auto_explore/mission_controller|/auto_explore/exploration_controller|/auto_explore/pose_publisher|/auto_explore/docking_controller|/auto_explore/shooter_controller' >/dev/null 2>&1 || true
+
+    ros2 daemon stop >/dev/null 2>&1 || true
+    ros2 daemon start >/dev/null 2>&1
+
+    ros2 launch auto_explore global_bringup.py \
+        use_sim_time:=false \
+        enable_slam:=true \
+        enable_rviz:=true \
+        enable_markers:=true \
+        enable_pose_publisher:=true \
+        enable_docking:=true \
+        enable_shooter:=true \
+        shooter_enable_hardware:=true \
+        shooter_pigpiod_host:="$PI_IP"
 }
 EOF
 
@@ -231,57 +449,9 @@ colcon build --packages-select auto_explore
 source install/setup.bash
 ```
 
-## Launch Sequences (Verified)
+## Launch Sequences
 
-### Gazebo simulation
-
-Terminal 1:
-
-```bash
-export TURTLEBOT3_MODEL=burger
-ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
-```
-
-Terminal 2:
-
-```bash
-ros2 launch auto_explore global_bringup.py \
-	use_sim_time:=true \
-	enable_slam:=true \
-	enable_rviz:=false \
-	enable_fsm:=true \
-	enable_navigation:=true \
-	enable_markers:=true \
-	enable_pose_publisher:=true \
-	enable_docking:=false \
-	enable_shooter:=false
-```
-
-### Physical TurtleBot3
-
-Terminal 1:
-
-```bash
-ros2 launch turtlebot3_bringup robot.launch.py
-```
-
-Terminal 2:
-
-```bash
-ros2 launch auto_explore global_bringup.py \
-	use_sim_time:=false \
-	enable_slam:=true \
-	enable_rviz:=true \
-	enable_fsm:=true \
-	enable_navigation:=true \
-	enable_markers:=true \
-	enable_pose_publisher:=true \
-	enable_docking:=true \
-	enable_shooter:=true \
-	shooter_enable_hardware:=true
-```
-
-If shooter host or ultrasonic tuning arguments are required, launch `global_controller_bringup.py` directly, because those arguments are declared at the controller launch layer.
+Operational launch sequences are maintained in the user-facing runbook: `docs/user-manual.md`.
 
 ## Launch Arguments by Layer
 
@@ -322,14 +492,12 @@ Includes all controller toggles and shooter tuning arguments:
 
 ## RViz Configuration Update
 
-The previous README included a full RViz payload block. This has been moved into this development documentation as process steps:
-
 ```bash
 cp ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz ~/tb3_cartographer.rviz.backup
 nano ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz
 ```
 
-Use the team-approved RViz file content for the cartographer view. Verify with:
+Use the team-approved RViz file content for the cartographer view in Appendix A. Verify with:
 
 ```bash
 rviz2 -d ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz
@@ -350,9 +518,3 @@ The integrated bringup includes:
 
 - Describe the SLAM and navigation parameter files.
 - Record which settings are source-of-truth and where they live.
-
-## Troubleshooting Development Issues
-
-- Overlay/source problems.
-- Launch-argument propagation mismatches.
-- RViz environment contamination.
