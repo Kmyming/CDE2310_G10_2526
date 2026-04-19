@@ -1,3 +1,12 @@
+## [2.16.4] - 2026-04-19
+Refined the High Level Design document with expanded details on system architecture, data flow, and subsystem operations.
+
+### Fixed
+- fix(docs): Removed the redundant 'docshigh-level-design.md' file.
+
+### Documentation
+- docs(high-level-design): Expanded and refined the High Level Design document with detailed sections on system overview, deployment, data flow, mission states, and subsystem descriptions.
+
 ## [2.16.3] - 2026-04-19
 ### Documentation
 - docs(high-level-design): Added a comprehensive High Level Design document detailing system architecture, data flow, mission states, and subsystem descriptions.
