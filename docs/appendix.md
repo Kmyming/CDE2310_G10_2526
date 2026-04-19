@@ -3,7 +3,7 @@ title: Appendix
 description: Legacy reference payloads and supplementary material.
 ---
 
-# 🔗 Navigation
+## 🔗 Navigation
 
 - [Home](index.md)
 - [Requirements Specification](requirements-specification.md)
@@ -24,9 +24,9 @@ description: Legacy reference payloads and supplementary material.
 
 # Appendix
 
-## A. RViz Full Configuration Payload (Legacy README)
+## A. RViz Full Configuration Payload
 
-This section preserves the full RViz payload previously documented in the historical README so teams can copy the exact configuration if needed.
+This section preserves the full RViz payload  so teams can copy the exact configuration if needed.
 
 Use it with:
 
@@ -543,3 +543,7 @@ Window Geometry:
   X: 164
   Y: 106
 ```
+## B. Calculated release height of ping pong ball
+<div style="text-align: center;">
+  <img src="assets/subsystem-mechanical/images/calculation.png" alt="calculation" />
+</div>

@@ -1,9 +1,30 @@
 ---
-title: TurtleBot3 Autonomous Exploration & Mission Control System
+title: Fundamentals of System Design – CDE2310
 description: Entry point for the project documentation set.
 ---
+# Fundamentals of System Design – CDE2310
 
-# 🔗 Navigation
+## System Overview (Tech Stack, Subsystems)
+
+This project is a ROS2-based autonomous mission stack using LiDAR, RPi Camera & Rack-and-Pinion Spring-Loaded Launcher for a warehouse maze environment deployment.
+
+Tech stack:
+
+- ROS2 Humble
+- SLAM Toolbox
+- Custom Open-source ROS2 Frontier-based exploration
+- OpenCV ArUco marker detection
+- Python / C++
+
+Core subsystems:
+
+- Navigation and FSM orchestration
+- Docking at static and dynamic delivery zones via ArUco marker detection
+- 3D-printed Spring-loaded rack-and-pinion launcher system
+- Fully simulated in Gazebo
+- Successful static and dynamic ball delivery and autonomous exploration & navigation of warehouse maze environment
+
+## 🔗 Navigation
 
 - [Home](index.md)
 - [Requirements Specification](requirements-specification.md)
@@ -22,39 +43,28 @@ description: Entry point for the project documentation set.
 
 ---
 
-# TurtleBot3 Autonomous Exploration & Mission Control System
+## Our Robot
+<div style="text-align: center;">
+  <img src="assets/subsystem-mechanical/images/final.jpg" alt="final" width="27.7%"/>
+   <img src="assets/subsystem-mechanical/images/finalCAD.png" alt="finalCAD" width="40%"/>
+</div>
 
-## Overview
 
-This project implements a ROS2-based TurtleBot3 mission stack for autonomous exploration, ArUco marker detection, docking, and payload delivery. The repository is documented in markdown first; GitHub Pages is a supplementary rendered view of the same content.
+## Final Navigation Run (Sped Up)
+<div style="display: flex; justify-content: center; margin: 2em 0;">
+  <video width='780' height='480' controls>
+    <source src="docs/assets/Uncropped Rviz.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+</div>
 
-## Project Snapshot
+## Full Mission Run:
+[Watch the Video](https://youtu.be/GBjxFKn8IDs)
 
-| Item | Value |
-|---|---|
-| Platform | TurtleBot3 Burger |
-| ROS2 | Humble |
-| Primary package | `auto_explore` |
-| Runtime split | Laptop for mission control and SLAM, robot for bringup and hardware |
-| Main launch entrypoint | `remote_laptop_src/launch/global_bringup.py` |
 
-## Documentation Map
 
-- Requirements and scope: [Requirements Specification](requirements-specification.md)
-- Operating concept: [Concept of Operations](con-ops.md)
-- Architecture: [High Level Design](high-level-design.md)
-- Software navigation: [Software Subsystem: Navigation and FSM](subsystem-nav-fsm.md)
-- Marker detection: [Software Subsystem: ArUco Marker Detection](subsystem-software-aruco.md)
-- Physical build: [Mechanical Subsystem](subsystem-mechanical.md)
-- Wiring and power: [Electrical Subsystem](subsystem-electrical.md)
-- ROS interfaces: [Interface Control Document](interface-control-document.md)
-- Build and deployment: [Software and Firmware Development](software-firmware-development.md)
-- Validation: [Testing Documentation](testing-documentation.md)
-- Operator guide: [User Manual](user-manual.md)
-- Future work: [Areas for Improvement](improvements.md)
-- [Appendix](appendix.md)
-
-## GitHub Pages
-
-The Pages site should mirror these markdown files using a simple Jekyll theme. It is a presentation layer only; the md files are the canonical submission artifacts.
+## The Team
+<div style="text-align: center;">
+  <img src="assets/team.jpg" alt="team" />
+</div>
 
