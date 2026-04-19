@@ -2,6 +2,10 @@ title: ""
 description: ""
 remote_theme: jekyll/minima
 markdown: kramdown
+kramdown:
+  input: GFM
+  math_engine: mathjax
+  syntax_highlighter: rouge
 header_pages: []
 plugins:
   - jekyll-remote-theme
