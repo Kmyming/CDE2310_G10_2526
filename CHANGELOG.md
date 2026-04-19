@@ -1,3 +1,11 @@
+## [2.16.8] - 2026-04-19
+Expanded and updated the testing documentation with detailed physical robot test results and subsystem summaries for ArUco marker detection and docking.
+
+### Documentation
+- docs(testing): Added comprehensive physical robot testing results and summaries for the ArUco marker detection subsystem.
+- docs(testing): Documented physical robot testing results and summaries for the docking subsystem, including the evolution of its control logic.
+- docs(testing): Updated integration testing procedures and expected behaviors for marker detection and full system bringup.
+
 ## [2.16.7] - 2026-04-19
 Enhanced the Concept of Operations document with a visual representation of the system's workflow.
 
