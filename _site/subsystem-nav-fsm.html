@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  function renderMermaidBlocks() {
+    const codeBlocks = document.querySelectorAll('pre code.language-mermaid, pre code.mermaid');
+
+    codeBlocks.forEach((codeBlock, index) => {
+      const pre = codeBlock.parentElement;
+      if (!pre || pre.dataset.mermaidProcessed === 'true') {
+        return;
+      }
+
+      const container = document.createElement('div');
+      container.className = 'mermaid';
+      container.id = `mermaid-diagram-${index}`;
+      container.textContent = codeBlock.textContent;
+
+      pre.dataset.mermaidProcessed = 'true';
+      pre.replaceWith(container);
+    });
+
+    if (window.mermaid) {
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'loose',
+        theme: 'default'
+      });
+
+      window.mermaid.run({ querySelector: '.mermaid' });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderMermaidBlocks);
+  } else {
+    renderMermaidBlocks();
+  }
+</script>
+
+</head>
+<body>
+  <main>
+    <h2 id="-navigation">🔗 Navigation</h2>
+
+<ul>
+  <li><a href="index.md">Home</a></li>
+  <li><a href="requirements-specification.md">Requirements Specification</a></li>
+  <li><a href="con-ops.md">Concept of Operations</a></li>
+  <li><a href="high-level-design.md">High Level Design</a></li>
+  <li><a href="subsystem-nav-fsm.md">Software Subsystem: Navigation and FSM</a></li>
+  <li><a href="subsystem-software-aruco.md">Software Subsystem: ArUco Marker Detection</a></li>
+  <li><a href="subsystem-mechanical.md">Mechanical Subsystem</a></li>
+  <li><a href="subsystem-electrical.md">Electrical Subsystem</a></li>
+  <li><a href="interface-control-document.md">Interface Control Document</a></li>
+  <li><a href="software-firmware-development.md">Software and Firmware Development</a></li>
+  <li><a href="testing-documentation.md">Testing Documentation</a></li>
+  <li><a href="user-manual.md">User Manual</a></li>
+  <li><a href="improvements.md">Areas for Improvement</a></li>
+  <li><a href="appendix.md">Appendix</a></li>
+</ul>
+
+<hr />
+
+<h1 id="software-subsystem-navigation-and-fsm">Software Subsystem: Navigation and FSM</h1>
+
+<h2 id="document-purpose">Document Purpose</h2>
+
+<p>This is the <strong>design specification for the navigation and mission control subsystems</strong>: exploration algorithm, path planning, FSM state flow, and subsystem architecture. This document explains WHAT the subsystems do and WHY.</p>
+
+<p><strong>Cross-references for integration:</strong></p>
+<ul>
+  <li><a href="interface-control-document.md">interface-control-document.md</a> - Complete ROS topic specifications, timing, and error handling</li>
+  <li><a href="software-firmware-development.md">software-firmware-development.md</a> - Practical build, launch, and troubleshooting guides</li>
+</ul>
+
+<h2 id="purpose">Purpose</h2>
+
+<p>Provide autonomous frontier-based exploration, mission-state coordination, and velocity control for the TurtleBot3 mission stack.</p>
+
+<h2 id="runtime-entry-point">Runtime Entry Point</h2>
+
+<p>Navigation is launched from <code class="language-plaintext highlighter-rouge">remote_laptop_src/launch/nav_bringup.py</code> either directly or through the integrated bringup.</p>
+
+<p>FSM logic is launched from <code class="language-plaintext highlighter-rouge">remote_laptop_src/launch/global_controller_bringup.py</code> through <code class="language-plaintext highlighter-rouge">mission_controller</code>.</p>
+
+<h2 id="launch-interface">Launch Interface</h2>
+
+<p>For complete launch argument documentation, see <a href="interface-control-document.md#launch-arguments">interface-control-document.md</a>.</p>
+
+<p><strong>Navigation launcher (<code class="language-plaintext highlighter-rouge">nav_bringup.py</code>) key arguments:</strong></p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">enable_slam</code> - Enable SLAM Toolbox mapping</li>
+  <li><code class="language-plaintext highlighter-rouge">enable_rviz</code> - Enable RViz visualization</li>
+  <li><code class="language-plaintext highlighter-rouge">slam_params_file</code> - Path to SLAM config YAML</li>
+  <li><code class="language-plaintext highlighter-rouge">slam_start_delay_sec</code> - Delay before SLAM start (prevents startup races)</li>
+  <li><code class="language-plaintext highlighter-rouge">rviz_start_delay_sec</code> - Delay before RViz start (lets SLAM initialize first)</li>
+</ul>
+
+<p>For practical launch examples and sequencing, see <a href="software-firmware-development.md#launch-sequences-verified">software-firmware-development.md</a>.</p>
+
+<h2 id="exploration-algorithm">Exploration Algorithm</h2>
+
+<p>The exploration controller uses frontier-based path planning to autonomously discover unmapped regions:</p>
+
+<ol>
+  <li><strong>Frontier Detection</strong>: Identifies boundaries between known and unknown space in the occupancy grid</li>
+  <li><strong>Goal Selection</strong>: Selects the nearest frontier or highest-value frontier as the next waypoint</li>
+  <li><strong>Path Planning</strong>: Computes collision-free path using A* algorithm with configurable expansion and cost parameters</li>
+  <li><strong>Path Smoothing</strong>: Applies spline interpolation to smooth the planned path for smoother robot motion</li>
+  <li><strong>Goal Achievement</strong>: Uses lookahead-distance control to track the path and advance to the next frontier</li>
+  <li><strong>Completion</strong>: Signals <code class="language-plaintext highlighter-rouge">/map_explored</code> when no frontiers remain in the map</li>
+</ol>
+
+<p><strong>Configuration Parameters</strong> (from <code class="language-plaintext highlighter-rouge">config/params.yaml</code>):</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">speed</code>: Linear velocity command (m/s)</li>
+  <li><code class="language-plaintext highlighter-rouge">lookahead_distance</code>: Distance ahead on path for steering control (m)</li>
+  <li><code class="language-plaintext highlighter-rouge">expansion_size</code>: Grid expansion for obstacle clearance (cells)</li>
+  <li><code class="language-plaintext highlighter-rouge">target_error</code>: Acceptable distance error to goal (m)</li>
+  <li><code class="language-plaintext highlighter-rouge">robot_r</code>: Robot radius for collision checking (m)</li>
+</ul>
+
+<h2 id="path-planning">Path Planning</h2>
+
+<p>The exploration controller computes safe, smooth paths from the current robot pose to frontier goals:</p>
+
+<ol>
+  <li><strong>Map Representation</strong>: Consumes occupancy grid from SLAM Toolbox (<code class="language-plaintext highlighter-rouge">/map</code>)</li>
+  <li><strong>A* Search</strong>: Finds optimal path while respecting obstacles and robot radius</li>
+  <li><strong>Collision Avoidance</strong>: Maintains clearance around obstacles using expansion parameter</li>
+  <li><strong>Spline Smoothing</strong>: Applies scipy B-spline interpolation to create smooth, differentiable paths</li>
+  <li><strong>Execution</strong>: Publishes path to <code class="language-plaintext highlighter-rouge">/exploration_path</code> for visualization in RViz</li>
+  <li><strong>Control</strong>: Uses lookahead distance and path curvature to compute steering and speed commands</li>
+</ol>
+
+<p><strong>Data Flow:</strong></p>
+<ul>
+  <li>Input: <code class="language-plaintext highlighter-rouge">/map</code> (OccupancyGrid), <code class="language-plaintext highlighter-rouge">/odom</code> (current pose), <code class="language-plaintext highlighter-rouge">/scan</code> (immediate obstacles)</li>
+  <li>Output: <code class="language-plaintext highlighter-rouge">/cmd_vel_nav</code> (Twist commands to FSM), <code class="language-plaintext highlighter-rouge">/exploration_path</code> (Path visualization)</li>
+</ul>
+
+<h3 id="navigation-system-flowchart">Navigation System Flowchart</h3>
+
+<p>The complete navigation workflow operates as follows:</p>
+
+<pre><code class="language-mermaid">graph TD
+    A["Navigation System Start&lt;br/&gt;10 Hz Control Loop"] --&gt; B{SLAM Map Available?}
+    
+    B --&gt;|No| C["Wait for SLAM Toolbox Initialization&lt;br/&gt;Until /map, /odom, and /scan Are Available"]
+    C --&gt; C1["No /cmd_vel_nav Published in This Branch&lt;br/&gt;Sleep/Continue and Retry Next Cycle"]
+    C1 --&gt; A
+    
+    B --&gt;|Yes| D["Read Current Robot Pose&lt;br/&gt;from /odom Topic"]
+    D --&gt; E["Read Occupancy Grid&lt;br/&gt;from /map Topic"]
+    E --&gt; F["Detect Frontiers&lt;br/&gt;Boundary Between Known/Unknown Space"]
+    
+    F --&gt; G{Any Frontiers&lt;br/&gt;Detected?}
+    
+    G --&gt;|No Frontiers| H["Publish /map_explored = true&lt;br/&gt;Signal Exploration Complete"]
+    H --&gt; I["Publish /cmd_vel_nav: Zero Velocity&lt;br/&gt;FSM Transitions to END State"]
+    I --&gt; J["End Navigation Loop"]
+    
+    G --&gt;|Frontiers Found| K["Select Best Frontier Goal&lt;br/&gt;Nearest or Highest Priority"]
+    K --&gt; L["Run A* Path Planning Algorithm&lt;br/&gt;Current Pose → Frontier Goal"]
+    
+    L --&gt; M{Valid Path&lt;br/&gt;Found?}
+    
+    M --&gt;|No Route Exists| N["Publish Zero Velocity&lt;br/&gt;Wait for Map Update"]
+    N --&gt; N1["Retry Planning Next Cycle"]
+    N1 --&gt; A
+    
+    M --&gt;|Path Exists| O["Extract Waypoint Sequence&lt;br/&gt;from A* Path"]
+    O --&gt; P["Apply Spline Smoothing&lt;br/&gt;scipy B-spline Interpolation"]
+    P --&gt; T["Publish /exploration_path&lt;br/&gt;RViz Visualization"]
+    
+    T --&gt; U["Compute Steering Control&lt;br/&gt;Lookahead Distance Method"]
+    U --&gt; V["Calculate Angular Velocity&lt;br/&gt;from Path Curvature"]
+    V --&gt; W["Read Speed Parameter&lt;br/&gt;from config/params.yaml"]
+    W --&gt; X["Compute Linear Velocity&lt;br/&gt;Limited by Speed Parameter"]
+    X --&gt; Y["Create Twist Command&lt;br/&gt;linear.x, angular.z"]
+    
+    Y --&gt; Z["Publish /cmd_vel_nav&lt;br/&gt;Send to FSM Multiplexer"]
+    
+    Z --&gt; AA{Robot at&lt;br/&gt;Goal?&lt;br/&gt;Distance within&lt;br/&gt;target_error tolerance}
+    
+    AA --&gt;|Yes| AB["Frontier Reached&lt;br/&gt;Advance to Next Frontier"]
+    AB --&gt; A
+    
+    AA --&gt;|No| AC["Continue Following Path&lt;br/&gt;Next Control Cycle"]
+    AC --&gt; A
+    
+    style A fill:#e3f2fd
+    style B fill:#fff3e0
+    style G fill:#fff3e0
+    style M fill:#fff3e0
+    style R fill:#fff3e0
+    style AA fill:#fff3e0
+    style H fill:#c8e6c9
+    style I fill:#c8e6c9
+    style J fill:#f3e5f5
+    style N fill:#ffccbc
+    style T fill:#ffe0b2
+    style Z fill:#ffe0b2
+</code></pre>
+
+<h2 id="control-loop">Control Loop</h2>
+
+<p>The exploration controller runs a responsive real-time control loop:</p>
+
+<ul>
+  <li><strong>Loop Rate</strong>: 10 Hz timer driving state machine and velocity computation</li>
+  <li><strong>Input Aggregation</strong>: Subscribes to <code class="language-plaintext highlighter-rouge">/map</code>, <code class="language-plaintext highlighter-rouge">/odom</code>, <code class="language-plaintext highlighter-rouge">/scan</code> with adaptive QoS for sensor data</li>
+  <li><strong>Output Frequency</strong>: Publishes <code class="language-plaintext highlighter-rouge">/cmd_vel_nav</code> at control loop rate (~100 ms cycle)</li>
+  <li><strong>Failsafe</strong>: If map unavailable, controller waits for SLAM before planning</li>
+</ul>
+
+<p>For detailed timing specifications including startup delays and topic publishing frequencies, see <a href="interface-control-document.md#timing-and-rates">interface-control-document.md</a>.</p>
+
+<h3 id="sensor-input-integration">Sensor Input Integration</h3>
+
+<pre><code class="language-mermaid">graph LR
+    subgraph "Sensor Input"
+        LIDAR["/scan&lt;br/&gt;LaserScan"]
+        ODOM["/odom&lt;br/&gt;Odometry&lt;br/&gt;Robot Pose &amp; Velocity"]
+        MAP["/map&lt;br/&gt;OccupancyGrid&lt;br/&gt;from SLAM"]
+    end
+    
+    subgraph "Navigation Processing"
+        FRONTIER["Frontier&lt;br/&gt;Detection"]
+        ASTAR["A* Path&lt;br/&gt;Planning"]
+        SMOOTH["Spline&lt;br/&gt;Smoothing"]
+        STEER["Steering&lt;br/&gt;Control"]
+    end
+    
+    subgraph "Output Commands"
+        CMDVEL["/cmd_vel_nav&lt;br/&gt;Twist"]
+        PATH["/exploration_path&lt;br/&gt;Path Visualization"]
+        EXPLORED["/map_explored&lt;br/&gt;Bool Status"]
+    end
+    
+    MAP --&gt; FRONTIER
+    MAP --&gt; ASTAR
+    ODOM --&gt; ASTAR
+    ODOM --&gt; STEER
+    LIDAR --&gt; STEER
+    
+    FRONTIER --&gt; ASTAR
+    ASTAR --&gt; SMOOTH
+    SMOOTH --&gt; STEER
+    
+    STEER --&gt; CMDVEL
+    ASTAR --&gt; PATH
+    FRONTIER --&gt; EXPLORED
+    
+    style LIDAR fill:#90caf9
+    style ODOM fill:#90caf9
+    style MAP fill:#90caf9
+    style FRONTIER fill:#fff9c4
+    style ASTAR fill:#fff9c4
+    style SMOOTH fill:#fff9c4
+    style STEER fill:#fff9c4
+    style CMDVEL fill:#81c784
+    style PATH fill:#81c784
+    style EXPLORED fill:#81c784
+</code></pre>
+
+<h3 id="frontier-detection-to-goal-selection">Frontier Detection to Goal Selection</h3>
+
+<pre><code class="language-mermaid">graph TD
+    A["Occupancy Grid from /map"] --&gt; B["Identify All Frontier Cells&lt;br/&gt;Where unknown meets known space"]
+    B --&gt; C["Cluster Frontier Cells&lt;br/&gt;Group nearby frontiers"]
+    C --&gt; D["Compute Frontier Centers&lt;br/&gt;Centroid of each cluster"]
+    D --&gt; E["Calculate Distance to Each&lt;br/&gt;Frontier from Robot Pose"]
+    E --&gt; F["Evaluate Frontier Value&lt;br/&gt;Size, distance, exploration potential"]
+    F --&gt; G{Selection&lt;br/&gt;Strategy}
+    G --&gt;|Nearest| H["Choose Closest Frontier"]
+    G --&gt;|Value-Based| I["Choose Highest Value"]
+    H --&gt; J["Set as Goal&lt;br/&gt;for Next Navigation"]
+    I --&gt; J
+    J --&gt; K["Initiate A* Path Planning&lt;br/&gt;Robot Pose → Frontier Goal"]
+    
+    style A fill:#b3e5fc
+    style B fill:#fff9c4
+    style C fill:#fff9c4
+    style D fill:#fff9c4
+    style E fill:#fff9c4
+    style F fill:#fff9c4
+    style G fill:#ffcc80
+    style J fill:#c8e6c9
+    style K fill:#c8e6c9
+</code></pre>
+
+<h2 id="parameters-and-tuning">Parameters and Tuning</h2>
+
+<p>Navigation behavior is controlled by parameters in <code class="language-plaintext highlighter-rouge">config/params.yaml</code>. For detailed parameter management, file locations, and override procedures, see <a href="software-firmware-development.md#configuration-management">software-firmware-development.md</a>.</p>
+
+<p><strong>Exploration Controller Parameters:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">speed</code></td>
+      <td>float</td>
+      <td>0.09</td>
+      <td>Target linear velocity (m/s)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">lookahead_distance</code></td>
+      <td>float</td>
+      <td>0.24</td>
+      <td>Steering lookahead distance (m)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">expansion_size</code></td>
+      <td>int</td>
+      <td>3</td>
+      <td>Obstacle clearance grid cells</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">target_error</code></td>
+      <td>float</td>
+      <td>0.15</td>
+      <td>Goal distance tolerance (m)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">robot_r</code></td>
+      <td>float</td>
+      <td>0.2</td>
+      <td>Robot collision radius (m)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Quick Tuning Guidelines:</strong></p>
+<ul>
+  <li>Increase <code class="language-plaintext highlighter-rouge">speed</code> for faster exploration; decrease for tighter spaces</li>
+  <li>Increase <code class="language-plaintext highlighter-rouge">lookahead_distance</code> for smoother paths; decrease for reactive behavior</li>
+  <li>Increase <code class="language-plaintext highlighter-rouge">expansion_size</code> for more conservative obstacle avoidance</li>
+  <li>Decrease <code class="language-plaintext highlighter-rouge">target_error</code> for precise goal reaching; increase for speed</li>
+</ul>
+
+<h2 id="launch-sequence">Launch Sequence</h2>
+
+<p>For detailed, step-by-step launch instructions with full commands and rationale, see <a href="software-firmware-development.md#launch-sequences-verified">software-firmware-development.md</a>.</p>
+
+<p><strong>Quick Reference:</strong></p>
+
+<p><strong>Gazebo Simulation (Navigation Only):</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Terminal 1: Start Gazebo</span>
+<span class="nb">export </span><span class="nv">TURTLEBOT3_MODEL</span><span class="o">=</span>burger
+ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
+
+<span class="c"># Terminal 2: Start navigation (wait 5s for Gazebo to stabilize)</span>
+<span class="nb">sleep </span>5
+ros2 launch auto_explore nav_bringup.py use_sim_time:<span class="o">=</span><span class="nb">true</span> <span class="se">\</span>
+    slam_start_delay_sec:<span class="o">=</span>2.0 rviz_start_delay_sec:<span class="o">=</span>2.0
+</code></pre></div></div>
+
+<p><strong>Physical Robot (Navigation Only):</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Terminal 1: Start robot base</span>
+ros2 launch turtlebot3_bringup robot.launch.py
+
+<span class="c"># Terminal 2: Start navigation (wait 10s for hardware initialization)</span>
+<span class="nb">sleep </span>10
+ros2 launch auto_explore nav_bringup.py use_sim_time:<span class="o">=</span><span class="nb">false</span>
+</code></pre></div></div>
+
+<p><strong>Verification Steps:</strong></p>
+<ol>
+  <li>Source the workspace: <code class="language-plaintext highlighter-rouge">source ~/turtlebot3_ws/install/setup.bash</code></li>
+  <li>Confirm <code class="language-plaintext highlighter-rouge">/map</code>, <code class="language-plaintext highlighter-rouge">/odom</code>, and <code class="language-plaintext highlighter-rouge">/scan</code> topics are available: <code class="language-plaintext highlighter-rouge">ros2 topic list</code></li>
+  <li>Verify exploration path in RViz by enabling <code class="language-plaintext highlighter-rouge">/exploration_path</code> visualization</li>
+</ol>
+
+<h2 id="failure-handling">Failure Handling</h2>
+
+<p>For comprehensive error scenarios, fallback behaviors, and recovery procedures, see <a href="interface-control-document.md#error-and-fallback-behavior">interface-control-document.md</a> and <a href="software-firmware-development.md#troubleshooting-development-issues">software-firmware-development.md</a>.</p>
+
+<p><strong>Common Navigation Failures:</strong></p>
+
+<p><strong>Map unavailable (SLAM not running):</strong></p>
+<ul>
+  <li>Exploration controller publishes zero velocity</li>
+  <li>FSM remains in EXPLORE; no frontiers can be identified</li>
+  <li>Recovery: Start SLAM Toolbox; confirm <code class="language-plaintext highlighter-rouge">/map</code> topic appears within 15 seconds</li>
+</ul>
+
+<p><strong>Path blocked (no route to frontier):</strong></p>
+<ul>
+  <li>A* algorithm returns empty path</li>
+  <li>Controller publishes zero velocity and waits</li>
+  <li>Recovery: SLAM updates map; controller retries next cycle (typically within 1-2 minutes)</li>
+</ul>
+
+<p><strong>LiDAR or odometry offline:</strong></p>
+<ul>
+  <li>Controller detects missing <code class="language-plaintext highlighter-rouge">/scan</code> or <code class="language-plaintext highlighter-rouge">/odom</code> data</li>
+  <li>Publishes safe zero velocity; navigation halts</li>
+  <li>Recovery: Restart sensor nodes; verify <code class="language-plaintext highlighter-rouge">/scan</code> and <code class="language-plaintext highlighter-rouge">/odom</code> topics are active</li>
+</ul>
+
+<p><strong>Marker detection fails:</strong></p>
+<ul>
+  <li>FSM remains in EXPLORE indefinitely</li>
+  <li><code class="language-plaintext highlighter-rouge">/marker_detected</code> stays <code class="language-plaintext highlighter-rouge">false</code></li>
+  <li>Recovery: Check camera, verify lighting, test with <code class="language-plaintext highlighter-rouge">ros2 run cv_bridge cv_bridge_demo_color</code></li>
+</ul>
+
+<p><strong>Docking or shooter unavailable:</strong></p>
+<ul>
+  <li>Set <code class="language-plaintext highlighter-rouge">enable_docking:=false</code> and/or <code class="language-plaintext highlighter-rouge">enable_shooter:=false</code> at launch</li>
+  <li>FSM skips DOCK and LAUNCH states automatically</li>
+  <li>Recovery: Enable hardware controllers or accept exploration-only mission</li>
+</ul>
+
+<h2 id="fsm-section">FSM Section</h2>
+
+<h3 id="purpose-1">Purpose</h3>
+
+<p>The finite state machine coordinates mission progression and subsystem handoff (explore, dock, launch, and completion). The FSM also acts as a velocity multiplexer, selecting between navigation (<code class="language-plaintext highlighter-rouge">/cmd_vel_nav</code>) and docking (<code class="language-plaintext highlighter-rouge">/cmd_vel_docking</code>) commands based on the active state.</p>
+
+<h3 id="state-flow-and-transitions">State Flow and Transitions</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>IDLE → EXPLORE → DOCK → LAUNCH → BACKUP → EXPLORE → ... → END
+</code></pre></div></div>
+<h3 id="fsm-state-diagram">FSM State Diagram</h3>
+
+<pre><code class="language-mermaid">flowchart TD
+    IDLE(["IDLE&lt;br&gt;System inactive"]) --&gt;|startup| EXPLORE
+
+    EXPLORE["EXPLORE&lt;br&gt;Frontier navigation"] --&gt;|/marker_detected = True| DOCK
+    EXPLORE --&gt;|/map_explored = True&lt;br&gt;AND marker_count ≥ required| END
+
+    DOCK["DOCK&lt;br&gt;Docking controller active"] --&gt;|/dock_done = True| LAUNCH
+    DOCK --&gt;|/dock_done = False&lt;br&gt;or timeout| EXPLORE
+
+    LAUNCH["LAUNCH&lt;br&gt;Shooter active"] --&gt;|/shoot_done + min duration| BACKUP
+
+    BACKUP["BACKUP&lt;br&gt;Reverse motion (2s)"] --&gt; EXPLORE
+
+    END(["END&lt;br&gt;Mission complete&lt;br&gt;FSM stops"])
+</code></pre>
+<p><strong>State Descriptions:</strong></p>
+
+<ul>
+  <li><strong>EXPLORE</strong>: Frontier-based exploration active. Exploration controller seeks unmapped regions. Transitions to DOCK when marker is detected.</li>
+  <li><strong>DOCK</strong>: Docking sequence in progress. Robot approaches and docks with stationary charging/marker station. Publishes docking velocity commands. Transitions to LAUNCH when docking completes (<code class="language-plaintext highlighter-rouge">/dock_done</code> signal received).</li>
+  <li><strong>LAUNCH</strong>: Shooter engagement in progress. Shooter fires projectile at target. Transition time is minimum 15 seconds (<code class="language-plaintext highlighter-rouge">launch_min_duration_sec</code>). Transitions back to EXPLORE when shooter completes (<code class="language-plaintext highlighter-rouge">/shoot_done</code> signal received or timer expires).</li>
+  <li><strong>END</strong>: Mission complete. FSM stops all motion and terminates execution by cancelling the control loop. No further state transitions occur.</li>
+  <li><strong>BACKUP</strong>: Robot reverses for a fixed duration (2 seconds) after payload delivery to safely disengage from the docking area before resuming exploration.</li>
+</ul>
+
+<p><strong>Transition Triggers:</strong></p>
+<ul>
+  <li>EXPLORE → DOCK: <code class="language-plaintext highlighter-rouge">/marker_detected</code> Boolean signal = <code class="language-plaintext highlighter-rouge">true</code></li>
+  <li>DOCK → LAUNCH: <code class="language-plaintext highlighter-rouge">/dock_done</code> Boolean signal = <code class="language-plaintext highlighter-rouge">true</code></li>
+  <li>LAUNCH → BACKUP: <code class="language-plaintext highlighter-rouge">/shoot_done = True</code> AND minimum launch duration elapsed</li>
+  <li>BACKUP → EXPLORE: Backup timer completed</li>
+  <li>EXPLORE → END: <code class="language-plaintext highlighter-rouge">/map_explored = True</code> AND <code class="language-plaintext highlighter-rouge">marker_count ≥ required_markers</code></li>
+</ul>
+
+<h3 id="core-fsm-interfaces">Core FSM Interfaces</h3>
+
+<p>For complete ROS topic and message type specifications, see <a href="interface-control-document.md#ros-topics">interface-control-document.md</a>.</p>
+
+<p><strong>Mission Controller Pub/Sub:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Direction</th>
+      <th>Topic</th>
+      <th>Type</th>
+      <th>Purpose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Publishes</td>
+      <td><code class="language-plaintext highlighter-rouge">/states</code></td>
+      <td>String</td>
+      <td>Current state name (EXPLORE, DOCK, LAUNCH, END)</td>
+    </tr>
+    <tr>
+      <td>Publishes</td>
+      <td><code class="language-plaintext highlighter-rouge">/shoot_type</code></td>
+      <td>String</td>
+      <td>Shooter trigger mode (static, dynamic, or idle)</td>
+    </tr>
+    <tr>
+      <td>Publishes</td>
+      <td><code class="language-plaintext highlighter-rouge">/cmd_vel</code></td>
+      <td>Twist</td>
+      <td>Arbitrated velocity command (prioritizes docking over exploration)</td>
+    </tr>
+    <tr>
+      <td>Subscribes</td>
+      <td><code class="language-plaintext highlighter-rouge">/marker_detected</code></td>
+      <td>Bool</td>
+      <td>Marker visibility from pose_publisher</td>
+    </tr>
+    <tr>
+      <td>Subscribes</td>
+      <td><code class="language-plaintext highlighter-rouge">/dock_done</code></td>
+      <td>Bool</td>
+      <td>Dock completion from docking_controller</td>
+    </tr>
+    <tr>
+      <td>Subscribes</td>
+      <td><code class="language-plaintext highlighter-rouge">/shoot_done</code></td>
+      <td>Bool</td>
+      <td>Shooter completion from shooter_controller</td>
+    </tr>
+    <tr>
+      <td>Subscribes</td>
+      <td><code class="language-plaintext highlighter-rouge">/map_explored</code></td>
+      <td>Bool</td>
+      <td>Exploration completion from exploration_controller</td>
+    </tr>
+    <tr>
+      <td>Subscribes</td>
+      <td><code class="language-plaintext highlighter-rouge">/cmd_vel_nav</code></td>
+      <td>Twist</td>
+      <td>Velocity from exploration_controller</td>
+    </tr>
+    <tr>
+      <td>Subscribes</td>
+      <td><code class="language-plaintext highlighter-rouge">/cmd_vel_docking</code></td>
+      <td>Twist</td>
+      <td>Velocity from docking_controller</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="launch-controls">Launch Controls</h3>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">enable_fsm</code> gates mission-controller startup (default: <code class="language-plaintext highlighter-rouge">true</code>)</li>
+  <li><code class="language-plaintext highlighter-rouge">enable_navigation</code> gates exploration_controller startup (default: <code class="language-plaintext highlighter-rouge">true</code>)</li>
+  <li><code class="language-plaintext highlighter-rouge">enable_markers</code> gates marker detection pipeline (controls pose_publisher)</li>
+  <li><code class="language-plaintext highlighter-rouge">enable_pose_publisher</code> gates ArUco marker pose publisher (default: <code class="language-plaintext highlighter-rouge">true</code> when markers enabled)</li>
+  <li><code class="language-plaintext highlighter-rouge">enable_docking</code> gates docking_controller startup and DOCK state transitions (default: <code class="language-plaintext highlighter-rouge">true</code>)</li>
+  <li><code class="language-plaintext highlighter-rouge">enable_shooter</code> gates shooter_controller startup and LAUNCH state transitions (default: <code class="language-plaintext highlighter-rouge">true</code>)</li>
+  <li><code class="language-plaintext highlighter-rouge">shooter_enable_hardware</code> enables physical GPIO actuation; set <code class="language-plaintext highlighter-rouge">false</code> for simulation (default: <code class="language-plaintext highlighter-rouge">false</code>)</li>
+</ul>
+
+<h3 id="fsm-verification-checks">FSM Verification Checks</h3>
+
+<p>Verify FSM state transitions and topic flow:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Monitor mission state</span>
+ros2 topic <span class="nb">echo</span> /states
+
+<span class="c"># Monitor shooter trigger</span>
+ros2 topic <span class="nb">echo</span> /shoot_type
+
+<span class="c"># Monitor exploration completion</span>
+ros2 topic <span class="nb">echo</span> /map_explored
+
+<span class="c"># Monitor marker detection</span>
+ros2 topic <span class="nb">echo</span> /marker_detected
+
+<span class="c"># Monitor docking status</span>
+ros2 topic <span class="nb">echo</span> /dock_done
+
+<span class="c"># Monitor shooter status</span>
+ros2 topic <span class="nb">echo</span> /shoot_done
+</code></pre></div></div>
+
+<p><strong>Expected behavior:</strong></p>
+<ul>
+  <li>Initial state publishes <code class="language-plaintext highlighter-rouge">EXPLORE</code></li>
+  <li>Marker detection transitions to <code class="language-plaintext highlighter-rouge">DOCK</code> (mission_controller publishes marker trigger zone)</li>
+  <li>Docking completion transitions to <code class="language-plaintext highlighter-rouge">LAUNCH</code> (shooter mode published as <code class="language-plaintext highlighter-rouge">static</code> or <code class="language-plaintext highlighter-rouge">dynamic</code>)</li>
+  <li>Shooter completion transitions back to <code class="language-plaintext highlighter-rouge">EXPLORE</code></li>
+  <li>No spurious state loops or rapid re-triggering</li>
+</ul>
+
+  </main>
+</body>
+</html>

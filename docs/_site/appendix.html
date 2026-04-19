@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  function renderMermaidBlocks() {
+    const codeBlocks = document.querySelectorAll('pre code.language-mermaid, pre code.mermaid');
+
+    codeBlocks.forEach((codeBlock, index) => {
+      const pre = codeBlock.parentElement;
+      if (!pre || pre.dataset.mermaidProcessed === 'true') {
+        return;
+      }
+
+      const container = document.createElement('div');
+      container.className = 'mermaid';
+      container.id = `mermaid-diagram-${index}`;
+      container.textContent = codeBlock.textContent;
+
+      pre.dataset.mermaidProcessed = 'true';
+      pre.replaceWith(container);
+    });
+
+    if (window.mermaid) {
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'loose',
+        theme: 'default'
+      });
+
+      window.mermaid.run({ querySelector: '.mermaid' });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderMermaidBlocks);
+  } else {
+    renderMermaidBlocks();
+  }
+</script>
+
+</head>
+<body>
+  <main>
+    <h2 id="-navigation">🔗 Navigation</h2>
+
+<ul>
+  <li><a href="index.md">Home</a></li>
+  <li><a href="requirements-specification.md">Requirements Specification</a></li>
+  <li><a href="con-ops.md">Concept of Operations</a></li>
+  <li><a href="high-level-design.md">High Level Design</a></li>
+  <li><a href="subsystem-nav-fsm.md">Software Subsystem: Navigation and FSM</a></li>
+  <li><a href="subsystem-software-aruco.md">Software Subsystem: ArUco Marker Detection</a></li>
+  <li><a href="subsystem-mechanical.md">Mechanical Subsystem</a></li>
+  <li><a href="subsystem-electrical.md">Electrical Subsystem</a></li>
+  <li><a href="interface-control-document.md">Interface Control Document</a></li>
+  <li><a href="software-firmware-development.md">Software and Firmware Development</a></li>
+  <li><a href="testing-documentation.md">Testing Documentation</a></li>
+  <li><a href="user-manual.md">User Manual</a></li>
+  <li><a href="improvements.md">Areas for Improvement</a></li>
+  <li><a href="appendix.md">Appendix</a></li>
+</ul>
+
+<hr />
+
+<h1 id="appendix">Appendix</h1>
+
+<h2 id="a-rviz-full-configuration-payload">A. RViz Full Configuration Payload</h2>
+
+<p>This section preserves the full RViz payload  so teams can copy the exact configuration if needed.</p>
+
+<p>Use it with:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cp</span> ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz ~/tb3_cartographer.rviz.backup
+nano ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz
+</code></pre></div></div>
+
+<p>Paste the payload below into <code class="language-plaintext highlighter-rouge">tb3_cartographer.rviz</code>:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">Panels</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_common/Displays</span>
+    <span class="na">Help Height</span><span class="pi">:</span> <span class="m">78</span>
+    <span class="na">Name</span><span class="pi">:</span> <span class="s">Displays</span>
+    <span class="na">Property Tree Widget</span><span class="pi">:</span>
+      <span class="na">Expanded</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="s">/Global Options1</span>
+        <span class="pi">-</span> <span class="s">/LaserScan1/Topic1</span>
+      <span class="na">Splitter Ratio</span><span class="pi">:</span> <span class="m">0.3916349709033966</span>
+    <span class="na">Tree Height</span><span class="pi">:</span> <span class="m">347</span>
+  <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_common/Selection</span>
+    <span class="na">Name</span><span class="pi">:</span> <span class="s">Selection</span>
+  <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_common/Tool Properties</span>
+    <span class="na">Expanded</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">/Publish Point1</span>
+      <span class="pi">-</span> <span class="s">/2D Pose Estimate1</span>
+    <span class="na">Name</span><span class="pi">:</span> <span class="s">Tool Properties</span>
+    <span class="na">Splitter Ratio</span><span class="pi">:</span> <span class="m">0.5886790156364441</span>
+  <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_common/Views</span>
+    <span class="na">Expanded</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">/Current View1</span>
+    <span class="na">Name</span><span class="pi">:</span> <span class="s">Views</span>
+    <span class="na">Splitter Ratio</span><span class="pi">:</span> <span class="m">0.5</span>
+<span class="na">Visualization Manager</span><span class="pi">:</span>
+  <span class="na">Class</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span>
+  <span class="na">Displays</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">Alpha</span><span class="pi">:</span> <span class="m">0.5</span>
+      <span class="na">Cell Size</span><span class="pi">:</span> <span class="m">1</span>
+      <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/Grid</span>
+      <span class="na">Color</span><span class="pi">:</span> <span class="s">160; 160; </span><span class="m">164</span>
+      <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">Line Style</span><span class="pi">:</span>
+        <span class="na">Line Width</span><span class="pi">:</span> <span class="m">0.029999999329447746</span>
+        <span class="na">Value</span><span class="pi">:</span> <span class="s">Lines</span>
+      <span class="na">Name</span><span class="pi">:</span> <span class="s">Grid</span>
+      <span class="na">Normal Cell Count</span><span class="pi">:</span> <span class="m">0</span>
+      <span class="na">Offset</span><span class="pi">:</span>
+        <span class="na">X</span><span class="pi">:</span> <span class="m">0</span>
+        <span class="na">Y</span><span class="pi">:</span> <span class="m">0</span>
+        <span class="na">Z</span><span class="pi">:</span> <span class="m">0</span>
+      <span class="na">Plane</span><span class="pi">:</span> <span class="s">XY</span>
+      <span class="na">Plane Cell Count</span><span class="pi">:</span> <span class="m">10</span>
+      <span class="na">Reference Frame</span><span class="pi">:</span> <span class="s">&lt;Fixed Frame&gt;</span>
+      <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+    <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/TF</span>
+      <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">Frame Timeout</span><span class="pi">:</span> <span class="m">15</span>
+      <span class="na">Frames</span><span class="pi">:</span>
+        <span class="na">All Enabled</span><span class="pi">:</span> <span class="kc">false</span>
+        <span class="na">base_footprint</span><span class="pi">:</span>
+          <span class="na">Value</span><span class="pi">:</span> <span class="kc">false</span>
+        <span class="na">base_link</span><span class="pi">:</span>
+          <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+        <span class="na">base_scan</span><span class="pi">:</span>
+          <span class="na">Value</span><span class="pi">:</span> <span class="kc">false</span>
+        <span class="na">caster_back_link</span><span class="pi">:</span>
+          <span class="na">Value</span><span class="pi">:</span> <span class="kc">false</span>
+        <span class="na">imu_link</span><span class="pi">:</span>
+          <span class="na">Value</span><span class="pi">:</span> <span class="kc">false</span>
+        <span class="na">map</span><span class="pi">:</span>
+          <span class="na">Value</span><span class="pi">:</span> <span class="kc">false</span>
+        <span class="na">odom</span><span class="pi">:</span>
+          <span class="na">Value</span><span class="pi">:</span> <span class="kc">false</span>
+        <span class="na">wheel_left_link</span><span class="pi">:</span>
+          <span class="na">Value</span><span class="pi">:</span> <span class="kc">false</span>
+        <span class="na">wheel_right_link</span><span class="pi">:</span>
+          <span class="na">Value</span><span class="pi">:</span> <span class="kc">false</span>
+      <span class="na">Marker Scale</span><span class="pi">:</span> <span class="m">1</span>
+      <span class="na">Name</span><span class="pi">:</span> <span class="s">TF</span>
+      <span class="na">Show Arrows</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">Show Axes</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">Show Names</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">Tree</span><span class="pi">:</span>
+        <span class="na">map</span><span class="pi">:</span>
+          <span class="na">odom</span><span class="pi">:</span>
+            <span class="na">base_footprint</span><span class="pi">:</span>
+              <span class="na">base_link</span><span class="pi">:</span>
+                <span class="na">base_scan</span><span class="pi">:</span>
+                  <span class="pi">{}</span>
+                <span class="na">caster_back_link</span><span class="pi">:</span>
+                  <span class="pi">{}</span>
+                <span class="na">imu_link</span><span class="pi">:</span>
+                  <span class="pi">{}</span>
+                <span class="na">wheel_left_link</span><span class="pi">:</span>
+                  <span class="pi">{}</span>
+                <span class="na">wheel_right_link</span><span class="pi">:</span>
+                  <span class="pi">{}</span>
+      <span class="na">Update Interval</span><span class="pi">:</span> <span class="m">0</span>
+      <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+    <span class="pi">-</span> <span class="na">Alpha</span><span class="pi">:</span> <span class="m">1</span>
+      <span class="na">Autocompute Intensity Bounds</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">Autocompute Value Bounds</span><span class="pi">:</span>
+        <span class="na">Max Value</span><span class="pi">:</span> <span class="m">10</span>
+        <span class="na">Min Value</span><span class="pi">:</span> <span class="s">-10</span>
+        <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">Axis</span><span class="pi">:</span> <span class="s">Z</span>
+      <span class="na">Channel Name</span><span class="pi">:</span> <span class="s">intensity</span>
+      <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/LaserScan</span>
+      <span class="na">Color</span><span class="pi">:</span> <span class="s">255; 255; </span><span class="m">255</span>
+      <span class="na">Color Transformer</span><span class="pi">:</span> <span class="s">Intensity</span>
+      <span class="na">Decay Time</span><span class="pi">:</span> <span class="m">0</span>
+      <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">Invert Rainbow</span><span class="pi">:</span> <span class="kc">false</span>
+      <span class="na">Max Color</span><span class="pi">:</span> <span class="s">255; 255; </span><span class="m">255</span>
+      <span class="na">Max Intensity</span><span class="pi">:</span> <span class="m">4439</span>
+      <span class="na">Min Color</span><span class="pi">:</span> <span class="s">0; 0; </span><span class="m">0</span>
+      <span class="na">Min Intensity</span><span class="pi">:</span> <span class="m">105</span>
+      <span class="na">Name</span><span class="pi">:</span> <span class="s">LaserScan</span>
+      <span class="na">Position Transformer</span><span class="pi">:</span> <span class="s">XYZ</span>
+      <span class="na">Selectable</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">Size (Pixels)</span><span class="pi">:</span> <span class="m">3</span>
+      <span class="na">Size (m)</span><span class="pi">:</span> <span class="m">0.019999999552965164</span>
+      <span class="na">Style</span><span class="pi">:</span> <span class="s">Boxes</span>
+      <span class="na">Topic</span><span class="pi">:</span>
+        <span class="na">Depth</span><span class="pi">:</span> <span class="m">50</span>
+        <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+        <span class="na">Filter size</span><span class="pi">:</span> <span class="m">10</span>
+        <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+        <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Best Effort</span> 
+        <span class="na">Value</span><span class="pi">:</span> <span class="s">/scan</span>
+      <span class="na">Use Fixed Frame</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">Use rainbow</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+    <span class="pi">-</span> <span class="na">Angle Tolerance</span><span class="pi">:</span> <span class="m">0.10000000149011612</span>
+      <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/Odometry</span>
+      <span class="na">Covariance</span><span class="pi">:</span>
+        <span class="na">Orientation</span><span class="pi">:</span>
+          <span class="na">Alpha</span><span class="pi">:</span> <span class="m">0.5</span>
+          <span class="na">Color</span><span class="pi">:</span> <span class="s">255; 255; </span><span class="m">127</span>
+          <span class="na">Color Style</span><span class="pi">:</span> <span class="s">Unique</span>
+          <span class="na">Frame</span><span class="pi">:</span> <span class="s">Local</span>
+          <span class="na">Offset</span><span class="pi">:</span> <span class="m">1</span>
+          <span class="na">Scale</span><span class="pi">:</span> <span class="m">1</span>
+          <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+        <span class="na">Position</span><span class="pi">:</span>
+          <span class="na">Alpha</span><span class="pi">:</span> <span class="m">0.30000001192092896</span>
+          <span class="na">Color</span><span class="pi">:</span> <span class="s">204; 51; </span><span class="m">204</span>
+          <span class="na">Scale</span><span class="pi">:</span> <span class="m">1</span>
+          <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+        <span class="na">Value</span><span class="pi">:</span> <span class="kc">false</span>
+      <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">false</span>
+      <span class="na">Keep</span><span class="pi">:</span> <span class="m">100</span>
+      <span class="na">Name</span><span class="pi">:</span> <span class="s">Odometry</span>
+      <span class="na">Position Tolerance</span><span class="pi">:</span> <span class="m">0.10000000149011612</span>
+      <span class="na">Shape</span><span class="pi">:</span>
+        <span class="na">Alpha</span><span class="pi">:</span> <span class="m">1</span>
+        <span class="na">Axes Length</span><span class="pi">:</span> <span class="m">1</span>
+        <span class="na">Axes Radius</span><span class="pi">:</span> <span class="m">0.10000000149011612</span>
+        <span class="na">Color</span><span class="pi">:</span> <span class="s">255; 25; </span><span class="m">0</span>
+        <span class="na">Head Length</span><span class="pi">:</span> <span class="m">0.30000001192092896</span>
+        <span class="na">Head Radius</span><span class="pi">:</span> <span class="m">0.10000000149011612</span>
+        <span class="na">Shaft Length</span><span class="pi">:</span> <span class="m">1</span>
+        <span class="na">Shaft Radius</span><span class="pi">:</span> <span class="m">0.05000000074505806</span>
+        <span class="na">Value</span><span class="pi">:</span> <span class="s">Arrow</span>
+      <span class="na">Topic</span><span class="pi">:</span>
+        <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+        <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+        <span class="na">Filter size</span><span class="pi">:</span> <span class="m">10</span>
+        <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+        <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+        <span class="na">Value</span><span class="pi">:</span> <span class="s">/odom</span>
+      <span class="na">Value</span><span class="pi">:</span> <span class="kc">false</span>
+    <span class="pi">-</span> <span class="na">Alpha</span><span class="pi">:</span> <span class="m">0.699999988079071</span>
+      <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/Map</span>
+      <span class="na">Color Scheme</span><span class="pi">:</span> <span class="s">map</span>
+      <span class="na">Draw Behind</span><span class="pi">:</span> <span class="kc">false</span>
+      <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">Name</span><span class="pi">:</span> <span class="s">Map</span>
+      <span class="na">Topic</span><span class="pi">:</span>
+        <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+        <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Transient Local</span>
+        <span class="na">Filter size</span><span class="pi">:</span> <span class="m">10</span>
+        <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+        <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+        <span class="na">Value</span><span class="pi">:</span> <span class="s">/map</span>
+      <span class="na">Update Topic</span><span class="pi">:</span>
+        <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+        <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Transient Local</span>
+        <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+        <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+        <span class="na">Value</span><span class="pi">:</span> <span class="s">/map_updates</span>
+      <span class="na">Use Timestamp</span><span class="pi">:</span> <span class="kc">false</span>
+      <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+    <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_common/Group</span>
+      <span class="na">Displays</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_common/Group</span>
+          <span class="na">Displays</span><span class="pi">:</span>
+            <span class="pi">-</span> <span class="na">Alpha</span><span class="pi">:</span> <span class="m">0.699999988079071</span>
+              <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/Map</span>
+              <span class="na">Color Scheme</span><span class="pi">:</span> <span class="s">costmap</span>
+              <span class="na">Draw Behind</span><span class="pi">:</span> <span class="kc">true</span>
+              <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">true</span>
+              <span class="na">Name</span><span class="pi">:</span> <span class="s">Map</span>
+              <span class="na">Topic</span><span class="pi">:</span>
+                <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+                <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+                <span class="na">Filter size</span><span class="pi">:</span> <span class="m">10</span>
+                <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+                <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+                <span class="na">Value</span><span class="pi">:</span> <span class="s">/global_costmap/costmap</span>
+              <span class="na">Update Topic</span><span class="pi">:</span>
+                <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+                <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+                <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+                <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+                <span class="na">Value</span><span class="pi">:</span> <span class="s">/global_costmap/costmap_updates</span>
+              <span class="na">Use Timestamp</span><span class="pi">:</span> <span class="kc">false</span>
+              <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+            <span class="pi">-</span> <span class="na">Alpha</span><span class="pi">:</span> <span class="m">1</span>
+              <span class="na">Buffer Length</span><span class="pi">:</span> <span class="m">1</span>
+              <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/Path</span>
+              <span class="na">Color</span><span class="pi">:</span> <span class="s">255; 0; </span><span class="m">0</span>
+              <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">true</span>
+              <span class="na">Head Diameter</span><span class="pi">:</span> <span class="m">0.30000001192092896</span>
+              <span class="na">Head Length</span><span class="pi">:</span> <span class="m">0.20000000298023224</span>
+              <span class="na">Length</span><span class="pi">:</span> <span class="m">0.30000001192092896</span>
+              <span class="na">Line Style</span><span class="pi">:</span> <span class="s">Lines</span>
+              <span class="na">Line Width</span><span class="pi">:</span> <span class="m">0.029999999329447746</span>
+              <span class="na">Name</span><span class="pi">:</span> <span class="s">Path</span>
+              <span class="na">Offset</span><span class="pi">:</span>
+                <span class="na">X</span><span class="pi">:</span> <span class="m">0</span>
+                <span class="na">Y</span><span class="pi">:</span> <span class="m">0</span>
+                <span class="na">Z</span><span class="pi">:</span> <span class="m">0</span>
+              <span class="na">Pose Color</span><span class="pi">:</span> <span class="s">255; 85; </span><span class="m">255</span>
+              <span class="na">Pose Style</span><span class="pi">:</span> <span class="s">None</span>
+              <span class="na">Radius</span><span class="pi">:</span> <span class="m">0.029999999329447746</span>
+              <span class="na">Shaft Diameter</span><span class="pi">:</span> <span class="m">0.10000000149011612</span>
+              <span class="na">Shaft Length</span><span class="pi">:</span> <span class="m">0.10000000149011612</span>
+              <span class="na">Topic</span><span class="pi">:</span>
+                <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+                <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+                <span class="na">Filter size</span><span class="pi">:</span> <span class="m">10</span>
+                <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+                <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+                <span class="na">Value</span><span class="pi">:</span> <span class="s">/global_plan</span>
+              <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+          <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">true</span>
+          <span class="na">Name</span><span class="pi">:</span> <span class="s">Global Map</span>
+        <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_common/Group</span>
+          <span class="na">Displays</span><span class="pi">:</span>
+            <span class="pi">-</span> <span class="na">Alpha</span><span class="pi">:</span> <span class="m">1</span>
+              <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/Polygon</span>
+              <span class="na">Color</span><span class="pi">:</span> <span class="s">25; 255; </span><span class="m">0</span>
+              <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">true</span>
+              <span class="na">Name</span><span class="pi">:</span> <span class="s">Polygon</span>
+              <span class="na">Topic</span><span class="pi">:</span>
+                <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+                <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+                <span class="na">Filter size</span><span class="pi">:</span> <span class="m">10</span>
+                <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+                <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+                <span class="na">Value</span><span class="pi">:</span> <span class="s">/local_costmap/footprint</span>
+              <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+            <span class="pi">-</span> <span class="na">Alpha</span><span class="pi">:</span> <span class="m">0.699999988079071</span>
+              <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/Map</span>
+              <span class="na">Color Scheme</span><span class="pi">:</span> <span class="s">costmap</span>
+              <span class="na">Draw Behind</span><span class="pi">:</span> <span class="kc">false</span>
+              <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">true</span>
+              <span class="na">Name</span><span class="pi">:</span> <span class="s">Map</span>
+              <span class="na">Topic</span><span class="pi">:</span>
+                <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+                <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+                <span class="na">Filter size</span><span class="pi">:</span> <span class="m">10</span>
+                <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+                <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+                <span class="na">Value</span><span class="pi">:</span> <span class="s">/local_costmap/costmap</span>
+              <span class="na">Update Topic</span><span class="pi">:</span>
+                <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+                <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+                <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+                <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+                <span class="na">Value</span><span class="pi">:</span> <span class="s">/local_costmap/costmap_updates</span>
+              <span class="na">Use Timestamp</span><span class="pi">:</span> <span class="kc">false</span>
+              <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+            <span class="pi">-</span> <span class="na">Alpha</span><span class="pi">:</span> <span class="m">1</span>
+              <span class="na">Buffer Length</span><span class="pi">:</span> <span class="m">1</span>
+              <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/Path</span>
+              <span class="na">Color</span><span class="pi">:</span> <span class="s">255; 255; </span><span class="m">0</span>
+              <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">true</span>
+              <span class="na">Head Diameter</span><span class="pi">:</span> <span class="m">0.30000001192092896</span>
+              <span class="na">Head Length</span><span class="pi">:</span> <span class="m">0.20000000298023224</span>
+              <span class="na">Length</span><span class="pi">:</span> <span class="m">0.30000001192092896</span>
+              <span class="na">Line Style</span><span class="pi">:</span> <span class="s">Lines</span>
+              <span class="na">Line Width</span><span class="pi">:</span> <span class="m">0.029999999329447746</span>
+              <span class="na">Name</span><span class="pi">:</span> <span class="s">Path</span>
+              <span class="na">Offset</span><span class="pi">:</span>
+                <span class="na">X</span><span class="pi">:</span> <span class="m">0</span>
+                <span class="na">Y</span><span class="pi">:</span> <span class="m">0</span>
+                <span class="na">Z</span><span class="pi">:</span> <span class="m">0</span>
+              <span class="na">Pose Color</span><span class="pi">:</span> <span class="s">255; 85; </span><span class="m">255</span>
+              <span class="na">Pose Style</span><span class="pi">:</span> <span class="s">None</span>
+              <span class="na">Radius</span><span class="pi">:</span> <span class="m">0.029999999329447746</span>
+              <span class="na">Shaft Diameter</span><span class="pi">:</span> <span class="m">0.10000000149011612</span>
+              <span class="na">Shaft Length</span><span class="pi">:</span> <span class="m">0.10000000149011612</span>
+              <span class="na">Topic</span><span class="pi">:</span>
+                <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+                <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+                <span class="na">Filter size</span><span class="pi">:</span> <span class="m">10</span>
+                <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+                <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+                <span class="na">Value</span><span class="pi">:</span> <span class="s">/local_plan</span>
+              <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+          <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">true</span>
+          <span class="na">Name</span><span class="pi">:</span> <span class="s">Local Map</span>
+        <span class="pi">-</span> <span class="na">Alpha</span><span class="pi">:</span> <span class="m">1</span>
+          <span class="na">Arrow Length</span><span class="pi">:</span> <span class="m">0.05000000074505806</span>
+          <span class="na">Axes Length</span><span class="pi">:</span> <span class="m">0.30000001192092896</span>
+          <span class="na">Axes Radius</span><span class="pi">:</span> <span class="m">0.009999999776482582</span>
+          <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/PoseArray</span>
+          <span class="na">Color</span><span class="pi">:</span> <span class="s">0; 192; </span><span class="m">0</span>
+          <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">true</span>
+          <span class="na">Head Length</span><span class="pi">:</span> <span class="m">0.07000000029802322</span>
+          <span class="na">Head Radius</span><span class="pi">:</span> <span class="m">0.029999999329447746</span>
+          <span class="na">Name</span><span class="pi">:</span> <span class="s">PoseArray</span>
+          <span class="na">Shaft Length</span><span class="pi">:</span> <span class="m">0.23000000417232513</span>
+          <span class="na">Shaft Radius</span><span class="pi">:</span> <span class="m">0.009999999776482582</span>
+          <span class="na">Shape</span><span class="pi">:</span> <span class="s">Arrow (Flat)</span>
+          <span class="na">Topic</span><span class="pi">:</span>
+            <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+            <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+            <span class="na">Filter size</span><span class="pi">:</span> <span class="m">10</span>
+            <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+            <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+            <span class="na">Value</span><span class="pi">:</span> <span class="s">/particlecloud</span>
+          <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">false</span>
+      <span class="na">Name</span><span class="pi">:</span> <span class="s">Navigation</span>
+    <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_common/Group</span>
+      <span class="na">Displays</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">Alpha</span><span class="pi">:</span> <span class="m">1</span>
+          <span class="na">Autocompute Intensity Bounds</span><span class="pi">:</span> <span class="kc">true</span>
+          <span class="na">Autocompute Value Bounds</span><span class="pi">:</span>
+            <span class="na">Max Value</span><span class="pi">:</span> <span class="m">0.18203988671302795</span>
+            <span class="na">Min Value</span><span class="pi">:</span> <span class="m">0.18195410072803497</span>
+            <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+          <span class="na">Axis</span><span class="pi">:</span> <span class="s">Z</span>
+          <span class="na">Channel Name</span><span class="pi">:</span> <span class="s">intensity</span>
+          <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/PointCloud2</span>
+          <span class="na">Color</span><span class="pi">:</span> <span class="s">0; 255; </span><span class="m">0</span>
+          <span class="na">Color Transformer</span><span class="pi">:</span> <span class="s">FlatColor</span>
+          <span class="na">Decay Time</span><span class="pi">:</span> <span class="m">0</span>
+          <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">true</span>
+          <span class="na">Invert Rainbow</span><span class="pi">:</span> <span class="kc">false</span>
+          <span class="na">Max Color</span><span class="pi">:</span> <span class="s">255; 255; </span><span class="m">255</span>
+          <span class="na">Max Intensity</span><span class="pi">:</span> <span class="m">4096</span>
+          <span class="na">Min Color</span><span class="pi">:</span> <span class="s">0; 0; </span><span class="m">0</span>
+          <span class="na">Min Intensity</span><span class="pi">:</span> <span class="m">0</span>
+          <span class="na">Name</span><span class="pi">:</span> <span class="s">scan_matched_points2</span>
+          <span class="na">Position Transformer</span><span class="pi">:</span> <span class="s">XYZ</span>
+          <span class="na">Selectable</span><span class="pi">:</span> <span class="kc">true</span>
+          <span class="na">Size (Pixels)</span><span class="pi">:</span> <span class="m">3</span>
+          <span class="na">Size (m)</span><span class="pi">:</span> <span class="m">0.009999999776482582</span>
+          <span class="na">Style</span><span class="pi">:</span> <span class="s">Boxes</span>
+          <span class="na">Topic</span><span class="pi">:</span>
+            <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+            <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+            <span class="na">Filter size</span><span class="pi">:</span> <span class="m">10</span>
+            <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+            <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+            <span class="na">Value</span><span class="pi">:</span> <span class="s">/scan_matched_points2</span>
+          <span class="na">Use Fixed Frame</span><span class="pi">:</span> <span class="kc">true</span>
+          <span class="na">Use rainbow</span><span class="pi">:</span> <span class="kc">true</span>
+          <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+        <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/MarkerArray</span>
+          <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">false</span>
+          <span class="na">Name</span><span class="pi">:</span> <span class="s">Trajectories</span>
+          <span class="na">Namespaces</span><span class="pi">:</span>
+            <span class="pi">{}</span>
+          <span class="na">Topic</span><span class="pi">:</span>
+            <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+            <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+            <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+            <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+            <span class="na">Value</span><span class="pi">:</span> <span class="s">/trajectory_node_list</span>
+          <span class="na">Value</span><span class="pi">:</span> <span class="kc">false</span>
+        <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/MarkerArray</span>
+          <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">false</span>
+          <span class="na">Name</span><span class="pi">:</span> <span class="s">Constraints</span>
+          <span class="na">Namespaces</span><span class="pi">:</span>
+            <span class="pi">{}</span>
+          <span class="na">Topic</span><span class="pi">:</span>
+            <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+            <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+            <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+            <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+            <span class="na">Value</span><span class="pi">:</span> <span class="s">/constraint_list</span>
+          <span class="na">Value</span><span class="pi">:</span> <span class="kc">false</span>
+        <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/MarkerArray</span>
+          <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">false</span>
+          <span class="na">Name</span><span class="pi">:</span> <span class="s">Landmark Poses</span>
+          <span class="na">Namespaces</span><span class="pi">:</span>
+            <span class="pi">{}</span>
+          <span class="na">Topic</span><span class="pi">:</span>
+            <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+            <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+            <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+            <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+            <span class="na">Value</span><span class="pi">:</span> <span class="s">/landmark_poses_list</span>
+          <span class="na">Value</span><span class="pi">:</span> <span class="kc">false</span>
+      <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">Name</span><span class="pi">:</span> <span class="s">Cartographer</span>
+    <span class="pi">-</span> <span class="na">Alpha</span><span class="pi">:</span> <span class="m">1</span>
+      <span class="na">Buffer Length</span><span class="pi">:</span> <span class="m">1</span>
+      <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/Path</span>
+      <span class="na">Color</span><span class="pi">:</span> <span class="s">0; 255; </span><span class="m">255</span>
+      <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">Head Diameter</span><span class="pi">:</span> <span class="m">0.30000001192092896</span>
+      <span class="na">Head Length</span><span class="pi">:</span> <span class="m">0.20000000298023224</span>
+      <span class="na">Length</span><span class="pi">:</span> <span class="m">0.30000001192092896</span>
+      <span class="na">Line Style</span><span class="pi">:</span> <span class="s">Lines</span>
+      <span class="na">Line Width</span><span class="pi">:</span> <span class="m">0.05000000074505806</span>
+      <span class="na">Name</span><span class="pi">:</span> <span class="s">Exploration Path</span>
+      <span class="na">Offset</span><span class="pi">:</span>
+        <span class="na">X</span><span class="pi">:</span> <span class="m">0</span>
+        <span class="na">Y</span><span class="pi">:</span> <span class="m">0</span>
+        <span class="na">Z</span><span class="pi">:</span> <span class="m">0</span>
+      <span class="na">Pose Color</span><span class="pi">:</span> <span class="s">255; 85; </span><span class="m">255</span>
+      <span class="na">Pose Style</span><span class="pi">:</span> <span class="s">None</span>
+      <span class="na">Radius</span><span class="pi">:</span> <span class="m">0.029999999329447746</span>
+      <span class="na">Shaft Diameter</span><span class="pi">:</span> <span class="m">0.10000000149011612</span>
+      <span class="na">Shaft Length</span><span class="pi">:</span> <span class="m">0.10000000149011612</span>
+      <span class="na">Topic</span><span class="pi">:</span>
+        <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+        <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+        <span class="na">Filter size</span><span class="pi">:</span> <span class="m">10</span>
+        <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+        <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+        <span class="na">Value</span><span class="pi">:</span> <span class="s">/exploration_path</span>
+      <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+  <span class="na">Enabled</span><span class="pi">:</span> <span class="kc">true</span>
+  <span class="na">Global Options</span><span class="pi">:</span>
+    <span class="na">Background Color</span><span class="pi">:</span> <span class="s">48; 48; </span><span class="m">48</span>
+    <span class="na">Fixed Frame</span><span class="pi">:</span> <span class="s">map</span>
+    <span class="na">Frame Rate</span><span class="pi">:</span> <span class="m">10</span>
+  <span class="na">Name</span><span class="pi">:</span> <span class="s">root</span>
+  <span class="na">Tools</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/MoveCamera</span>
+    <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/Select</span>
+    <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/FocusCamera</span>
+    <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/Measure</span>
+      <span class="na">Line color</span><span class="pi">:</span> <span class="s">128; 128; </span><span class="m">0</span>
+    <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/SetGoal</span>
+      <span class="na">Topic</span><span class="pi">:</span>
+        <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+        <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+        <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+        <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+        <span class="na">Value</span><span class="pi">:</span> <span class="s">/move_base_simple/goal</span>
+    <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/PublishPoint</span>
+      <span class="na">Single click</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">Topic</span><span class="pi">:</span>
+        <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+        <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+        <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+        <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+        <span class="na">Value</span><span class="pi">:</span> <span class="s">/clicked_point</span>
+    <span class="pi">-</span> <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/SetInitialPose</span>
+      <span class="na">Covariance x</span><span class="pi">:</span> <span class="m">0.25</span>
+      <span class="na">Covariance y</span><span class="pi">:</span> <span class="m">0.25</span>
+      <span class="na">Covariance yaw</span><span class="pi">:</span> <span class="m">0.06853891909122467</span>
+      <span class="na">Topic</span><span class="pi">:</span>
+        <span class="na">Depth</span><span class="pi">:</span> <span class="m">5</span>
+        <span class="na">Durability Policy</span><span class="pi">:</span> <span class="s">Volatile</span>
+        <span class="na">History Policy</span><span class="pi">:</span> <span class="s">Keep Last</span>
+        <span class="na">Reliability Policy</span><span class="pi">:</span> <span class="s">Reliable</span>
+        <span class="na">Value</span><span class="pi">:</span> <span class="s">initialpose</span>
+  <span class="na">Transformation</span><span class="pi">:</span>
+    <span class="na">Current</span><span class="pi">:</span>
+      <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/TF</span>
+  <span class="na">Value</span><span class="pi">:</span> <span class="kc">true</span>
+  <span class="na">Views</span><span class="pi">:</span>
+    <span class="na">Current</span><span class="pi">:</span>
+      <span class="na">Angle</span><span class="pi">:</span> <span class="m">0</span>
+      <span class="na">Class</span><span class="pi">:</span> <span class="s">rviz_default_plugins/TopDownOrtho</span>
+      <span class="na">Enable Stereo Rendering</span><span class="pi">:</span>
+        <span class="na">Stereo Eye Separation</span><span class="pi">:</span> <span class="m">0.05999999865889549</span>
+        <span class="na">Stereo Focal Distance</span><span class="pi">:</span> <span class="m">1</span>
+        <span class="na">Swap Stereo Eyes</span><span class="pi">:</span> <span class="kc">false</span>
+        <span class="na">Value</span><span class="pi">:</span> <span class="kc">false</span>
+      <span class="na">Invert Z Axis</span><span class="pi">:</span> <span class="kc">false</span>
+      <span class="na">Name</span><span class="pi">:</span> <span class="s">Current View</span>
+      <span class="na">Near Clip Distance</span><span class="pi">:</span> <span class="m">0.009999999776482582</span>
+      <span class="na">Scale</span><span class="pi">:</span> <span class="m">119.26066589355469</span>
+      <span class="na">Target Frame</span><span class="pi">:</span> <span class="s">&lt;Fixed Frame&gt;</span>
+      <span class="na">Value</span><span class="pi">:</span> <span class="s">TopDownOrtho (rviz_default_plugins)</span>
+      <span class="na">X</span><span class="pi">:</span> <span class="m">0.0023878198117017746</span>
+      <span class="na">Y</span><span class="pi">:</span> <span class="s">-0.17037495970726013</span>
+    <span class="na">Saved</span><span class="pi">:</span> <span class="s">~</span>
+<span class="na">Window Geometry</span><span class="pi">:</span>
+  <span class="na">Displays</span><span class="pi">:</span>
+    <span class="na">collapsed</span><span class="pi">:</span> <span class="kc">false</span>
+  <span class="na">Height</span><span class="pi">:</span> <span class="m">576</span>
+  <span class="na">Hide Left Dock</span><span class="pi">:</span> <span class="kc">false</span>
+  <span class="na">Hide Right Dock</span><span class="pi">:</span> <span class="kc">true</span>
+  <span class="na">QMainWindow State</span><span class="pi">:</span> <span class="s">000000ff00000000fd00000004000000000000017a000001e6fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000001e6000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f00000236fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d00000236000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004420000003efc0100000002fb0000000800540069006d00650100000000000004420000000000000000fb0000000800540069006d00650100000000000004500000000000000000000002db000001e600000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000</span>
+  <span class="na">Selection</span><span class="pi">:</span>
+    <span class="na">collapsed</span><span class="pi">:</span> <span class="kc">false</span>
+  <span class="na">Tool Properties</span><span class="pi">:</span>
+    <span class="na">collapsed</span><span class="pi">:</span> <span class="kc">false</span>
+  <span class="na">Views</span><span class="pi">:</span>
+    <span class="na">collapsed</span><span class="pi">:</span> <span class="kc">true</span>
+  <span class="na">Width</span><span class="pi">:</span> <span class="m">1115</span>
+  <span class="na">X</span><span class="pi">:</span> <span class="m">164</span>
+  <span class="na">Y</span><span class="pi">:</span> <span class="m">106</span>
+</code></pre></div></div>
+<h2 id="b-calculated-release-height-of-ping-pong-ball">B. Calculated release height of ping pong ball</h2>
+<div style="text-align: center;">
+  <img src="assets/subsystem-mechanical/images/calculation.png" alt="calculation" />
+</div>
+
+  </main>
+</body>
+</html>

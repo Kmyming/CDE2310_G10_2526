@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  function renderMermaidBlocks() {
+    const codeBlocks = document.querySelectorAll('pre code.language-mermaid, pre code.mermaid');
+
+    codeBlocks.forEach((codeBlock, index) => {
+      const pre = codeBlock.parentElement;
+      if (!pre || pre.dataset.mermaidProcessed === 'true') {
+        return;
+      }
+
+      const container = document.createElement('div');
+      container.className = 'mermaid';
+      container.id = `mermaid-diagram-${index}`;
+      container.textContent = codeBlock.textContent;
+
+      pre.dataset.mermaidProcessed = 'true';
+      pre.replaceWith(container);
+    });
+
+    if (window.mermaid) {
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'loose',
+        theme: 'default'
+      });
+
+      window.mermaid.run({ querySelector: '.mermaid' });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderMermaidBlocks);
+  } else {
+    renderMermaidBlocks();
+  }
+</script>
+
+</head>
+<body>
+  <main>
+    <h2 id="-navigation">🔗 Navigation</h2>
+
+<ul>
+  <li><a href="index.md">Home</a></li>
+  <li><a href="requirements-specification.md">Requirements Specification</a></li>
+  <li><a href="con-ops.md">Concept of Operations</a></li>
+  <li><a href="high-level-design.md">High Level Design</a></li>
+  <li><a href="subsystem-nav-fsm.md">Software Subsystem: Navigation and FSM</a></li>
+  <li><a href="subsystem-software-aruco.md">Software Subsystem: ArUco Marker Detection</a></li>
+  <li><a href="subsystem-mechanical.md">Mechanical Subsystem</a></li>
+  <li><a href="subsystem-electrical.md">Electrical Subsystem</a></li>
+  <li><a href="interface-control-document.md">Interface Control Document</a></li>
+  <li><a href="software-firmware-development.md">Software and Firmware Development</a></li>
+  <li><a href="testing-documentation.md">Testing Documentation</a></li>
+  <li><a href="user-manual.md">User Manual</a></li>
+  <li><a href="improvements.md">Areas for Improvement</a></li>
+  <li><a href="appendix.md">Appendix</a></li>
+</ul>
+
+<hr />
+
+<h1 id="requirements-specification">Requirements Specification</h1>
+
+<h2 id="problem-statement">Problem Statement</h2>
+
+<p>The system must autonomously explore an unknown environment, detect ArUco markers, transition through mission states, and complete docking and payload-delivery behaviors without manual teleoperation.</p>
+
+<h2 id="stakeholder-needs">Stakeholder Needs</h2>
+
+<ul>
+  <li>Autonomous exploration of unknown space.</li>
+  <li>Reliable detection and logging of markers.</li>
+  <li>Deterministic mission transitions.</li>
+  <li>Clear operator setup and shutdown procedures.</li>
+</ul>
+
+<h2 id="functional-requirements">Functional Requirements</h2>
+
+<ul>
+  <li>FR-01: Build a map and explore frontiers using ROS2 navigation inputs.</li>
+  <li>FR-02: Detect ArUco markers from camera input and publish pose data.</li>
+  <li>FR-03: Transition between explore, dock, launch, and end states using mission logic.</li>
+  <li>FR-04: Allow simulation and real-robot operation through launch arguments.</li>
+  <li>FR-05: Support shooter hardware gating through launch-time parameters.</li>
+</ul>
+
+<h2 id="non-functional-requirements">Non-Functional Requirements</h2>
+
+<ul>
+  <li>NFR-01: The system shall be launchable with a single top-level bringup.</li>
+  <li>NFR-02: The system shall expose stable topic contracts for integration.</li>
+  <li>NFR-03: The documentation shall remain markdown-first and Pages-compatible.</li>
+</ul>
+
+<h2 id="constraints">Constraints</h2>
+
+<ul>
+  <li>ROS2 Humble environment.</li>
+  <li>TurtleBot3 Burger hardware and camera availability.</li>
+  <li>Separate laptop and robot runtime responsibilities.</li>
+</ul>
+
+<h2 id="acceptance-criteria">Acceptance Criteria</h2>
+
+<ul>
+  <li>The robot can start from the documented launch sequence.</li>
+  <li>Navigation, markers, and mission control can be launched independently.</li>
+  <li>The full mission stack exposes the expected topics and launch arguments.</li>
+</ul>
+
+<h2 id="requirement-traceability">Requirement Traceability</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Requirement</th>
+      <th>Primary doc</th>
+      <th>Validation doc</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>FR-01</td>
+      <td><a href="high-level-design.md">High Level Design</a></td>
+      <td><a href="testing-documentation.md">Testing Documentation</a></td>
+    </tr>
+    <tr>
+      <td>FR-02</td>
+      <td><a href="subsystem-software-aruco.md">Software Subsystem: ArUco Marker Detection</a></td>
+      <td><a href="testing-documentation.md">Testing Documentation</a></td>
+    </tr>
+    <tr>
+      <td>FR-03</td>
+      <td><a href="high-level-design.md">High Level Design</a></td>
+      <td><a href="interface-control-document.md">Interface Control Document</a></td>
+    </tr>
+    <tr>
+      <td>FR-04</td>
+      <td><a href="software-firmware-development.md">Software and Firmware Development</a></td>
+      <td><a href="user-manual.md">User Manual</a></td>
+    </tr>
+    <tr>
+      <td>FR-05</td>
+      <td><a href="interface-control-document.md">Interface Control Document</a></td>
+      <td><a href="testing-documentation.md">Testing Documentation</a></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="open-assumptions">Open Assumptions</h2>
+
+<ul>
+  <li>The operator will launch the system from the documented workspace.</li>
+  <li>The camera and LiDAR topics are available in the selected runtime mode.</li>
+</ul>
+
+  </main>
+</body>
+</html>

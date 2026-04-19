@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  function renderMermaidBlocks() {
+    const codeBlocks = document.querySelectorAll('pre code.language-mermaid, pre code.mermaid');
+
+    codeBlocks.forEach((codeBlock, index) => {
+      const pre = codeBlock.parentElement;
+      if (!pre || pre.dataset.mermaidProcessed === 'true') {
+        return;
+      }
+
+      const container = document.createElement('div');
+      container.className = 'mermaid';
+      container.id = `mermaid-diagram-${index}`;
+      container.textContent = codeBlock.textContent;
+
+      pre.dataset.mermaidProcessed = 'true';
+      pre.replaceWith(container);
+    });
+
+    if (window.mermaid) {
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'loose',
+        theme: 'default'
+      });
+
+      window.mermaid.run({ querySelector: '.mermaid' });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderMermaidBlocks);
+  } else {
+    renderMermaidBlocks();
+  }
+</script>
+
+</head>
+<body>
+  <main>
+    <h1 id="-navigation">🔗 Navigation</h1>
+<ul>
+  <li><a href="index.md">Home</a></li>
+  <li><a href="requirements-specification.md">Requirements Specification</a></li>
+  <li><a href="con-ops.md">Concept of Operations</a></li>
+  <li><a href="high-level-design.md">High Level Design</a></li>
+  <li><a href="subsystem-nav-fsm.md">Software Subsystem: Navigation and FSM</a></li>
+  <li><a href="subsystem-software-aruco.md">Software Subsystem: ArUco Marker Detection</a></li>
+  <li><a href="subsystem-mechanical.md">Mechanical Subsystem</a></li>
+  <li><a href="subsystem-electrical.md">Electrical Subsystem</a></li>
+  <li><a href="interface-control-document.md">Interface Control Document</a></li>
+  <li><a href="software-firmware-development.md">Software and Firmware Development</a></li>
+  <li><a href="testing-documentation.md">Testing Documentation</a></li>
+  <li><a href="user-manual.md">User Manual</a></li>
+  <li><a href="improvements.md">Areas for Improvement</a></li>
+  <li><a href="appendix.md">Appendix</a></li>
+</ul>
+
+<hr />
+
+<h1 id="requirements-specification">Requirements Specification</h1>
+
+<h2 id="problem-statement">Problem Statement</h2>
+
+<p>The system must autonomously explore an unknown indoor warehouse-style arena, detect ArUco fiducial markers identifying two delivery receptacles, dock precisely in front of each receptacle, and deliver exactly three ping-pong balls per receptacle — all without manual teleoperation after mission start. One receptacle is static; the other moves laterally at an unknown speed, requiring sensor-gated delivery timing. The complete mission must be executed within a <strong>25-minute window</strong> on a TurtleBot3 Burger platform running ROS 2 Humble.</p>
+
+<hr />
+
+<h2 id="stakeholder-needs">Stakeholder Needs</h2>
+
+<ul>
+  <li>Autonomous exploration of a fully unknown maze environment with no prior map.</li>
+  <li>Reliable detection and 6-DOF pose estimation of ArUco markers under realistic lighting and partial occlusion.</li>
+  <li>Deterministic mission state transitions that handle both success and failure paths without operator input.</li>
+  <li>Correct, sequenced ball delivery into both a static and a moving receptacle.</li>
+  <li>Clear operator setup and shutdown procedures requiring minimal technical expertise.</li>
+  <li>A single-command launch that brings up the full mission stack for both simulation and real hardware.</li>
+</ul>
+
+<hr />
+
+<h2 id="functional-requirements">Functional Requirements</h2>
+
+<h3 id="navigation-and-mapping">Navigation and Mapping</h3>
+
+<p><strong>FR-01</strong> — The system shall autonomously build a 2D occupancy grid of the arena using LiDAR-based SLAM without any prior map data.</p>
+
+<p><strong>FR-02</strong> — The system shall implement frontier-based exploration to discover and navigate to unexplored regions of the map systematically, scoring frontiers by a ratio of frontier size to A* path distance.</p>
+
+<p><strong>FR-03</strong> — The system shall plan collision-free paths to frontier targets using the A* algorithm on the inflated costmap and track those paths using a pure-pursuit controller.</p>
+
+<p><strong>FR-04</strong> — The system shall apply local obstacle avoidance using segmented LiDAR scan sectors, overriding path-following commands when obstacles are detected within <code class="language-plaintext highlighter-rouge">robot_r</code> of the robot body.</p>
+
+<p><strong>FR-05</strong> — The system shall publish a <code class="language-plaintext highlighter-rouge">/map_explored</code> signal (<code class="language-plaintext highlighter-rouge">Bool</code>, <code class="language-plaintext highlighter-rouge">True</code>) when no valid frontier groups remain in the occupancy grid.</p>
+
+<h3 id="marker-detection">Marker Detection</h3>
+
+<p><strong>FR-06</strong> — The system shall detect ArUco markers (dictionary <code class="language-plaintext highlighter-rouge">DICT_4X4_250</code>) from the Raspberry Pi camera feed and estimate their 6-DOF pose (translation vector <code class="language-plaintext highlighter-rouge">tvec</code>, rotation vector <code class="language-plaintext highlighter-rouge">rvec</code>) using OpenCV’s <code class="language-plaintext highlighter-rouge">estimatePoseSingleMarkers</code>.</p>
+
+<p><strong>FR-07</strong> — The system shall broadcast each detected marker’s pose as a TF transform (<code class="language-plaintext highlighter-rouge">aruco_marker_&lt;id&gt;</code>) and publish a <code class="language-plaintext highlighter-rouge">/marker_detected</code> (<code class="language-plaintext highlighter-rouge">Bool</code>) signal when at least one marker is visible.</p>
+
+<p><strong>FR-08</strong> — The system shall identify the delivery zone type from the marker ID: marker ID <code class="language-plaintext highlighter-rouge">0</code> corresponds to the static receptacle zone; marker ID <code class="language-plaintext highlighter-rouge">1</code> corresponds to the dynamic receptacle zone.</p>
+
+<p><strong>FR-09</strong> — The system shall use a fallback pinhole camera model when valid intrinsics are not available from <code class="language-plaintext highlighter-rouge">/camera/camera_info</code>, logging a warning and continuing detection.</p>
+
+<p><strong>FR-10</strong> — The system shall suppress duplicate zone-detection signals: once a zone has been marked as visited by the FSM, further detections of that zone’s marker shall be ignored.</p>
+
+<h3 id="mission-state-machine">Mission State Machine</h3>
+
+<p><strong>FR-11</strong> — The system shall implement a finite state machine (FSM) with the following top-level states: <code class="language-plaintext highlighter-rouge">EXPLORE</code>, <code class="language-plaintext highlighter-rouge">DOCK</code>, <code class="language-plaintext highlighter-rouge">LAUNCH</code>, <code class="language-plaintext highlighter-rouge">BACKUP</code>, and <code class="language-plaintext highlighter-rouge">END</code>.</p>
+
+<p><strong>FR-12</strong> — The FSM shall transition from <code class="language-plaintext highlighter-rouge">EXPLORE</code> to <code class="language-plaintext highlighter-rouge">DOCK</code> upon receiving a <code class="language-plaintext highlighter-rouge">/marker_detected = True</code> signal for an unvisited zone while in the <code class="language-plaintext highlighter-rouge">EXPLORE</code> state.</p>
+
+<p><strong>FR-13</strong> — The FSM shall transition from <code class="language-plaintext highlighter-rouge">DOCK</code> to <code class="language-plaintext highlighter-rouge">LAUNCH</code> upon receiving <code class="language-plaintext highlighter-rouge">/dock_done = True</code>, and return to <code class="language-plaintext highlighter-rouge">EXPLORE</code> upon receiving <code class="language-plaintext highlighter-rouge">/dock_done = False</code>.</p>
+
+<p><strong>FR-14</strong> — The FSM shall transition from <code class="language-plaintext highlighter-rouge">LAUNCH</code> to <code class="language-plaintext highlighter-rouge">BACKUP</code> after the shooter signals <code class="language-plaintext highlighter-rouge">/shoot_done = True</code> and a minimum hold duration of 15 seconds has elapsed.</p>
+
+<p><strong>FR-15</strong> — The FSM shall transition from <code class="language-plaintext highlighter-rouge">BACKUP</code> to <code class="language-plaintext highlighter-rouge">EXPLORE</code> after the robot has reversed for 2 seconds, clearing the delivery zone.</p>
+
+<p><strong>FR-16</strong> — The FSM shall transition to <code class="language-plaintext highlighter-rouge">END</code> when the map is fully explored and both delivery zones have been visited (<code class="language-plaintext highlighter-rouge">marker_count &gt;= 2</code>).</p>
+
+<p><strong>FR-17</strong> — The FSM shall arbitrate velocity commands from the navigation controller (<code class="language-plaintext highlighter-rouge">/cmd_vel_nav</code>) and the docking controller (<code class="language-plaintext highlighter-rouge">/cmd_vel_docking</code>), publishing the active controller’s output to <code class="language-plaintext highlighter-rouge">/cmd_vel</code> based on the current state.</p>
+
+<h3 id="docking">Docking</h3>
+
+<p><strong>FR-18</strong> — The docking controller shall implement a multi-stage docking state machine with the states: <code class="language-plaintext highlighter-rouge">IDLE</code>, <code class="language-plaintext highlighter-rouge">SEARCH</code>, <code class="language-plaintext highlighter-rouge">APPROACH_1</code>, <code class="language-plaintext highlighter-rouge">TURN_SIDE</code>, <code class="language-plaintext highlighter-rouge">DRIVE_SIDE</code>, <code class="language-plaintext highlighter-rouge">TURN_FACE_MARKER</code>, <code class="language-plaintext highlighter-rouge">FINAL_APPROACH</code>, <code class="language-plaintext highlighter-rouge">DONE</code>, <code class="language-plaintext highlighter-rouge">ABORT</code>, <code class="language-plaintext highlighter-rouge">OBSTACLE_AVOIDANCE</code>, and <code class="language-plaintext highlighter-rouge">SPECIAL_SEARCH</code>.</p>
+
+<p><strong>FR-19</strong> — The docking controller shall rotate the robot until the marker’s lateral offset <code class="language-plaintext highlighter-rouge">tx</code> is within ±0.01 m before beginning the approach.</p>
+
+<p><strong>FR-20</strong> — The docking controller shall compute a geometric perpendicular approach manoeuvre using the marker’s pose angle <code class="language-plaintext highlighter-rouge">θ</code> when <code class="language-plaintext highlighter-rouge">tz &lt; 0.30 m</code>, including a lateral drive step and a realignment turn.</p>
+
+<p><strong>FR-21</strong> — The docking controller shall terminate the final approach and publish <code class="language-plaintext highlighter-rouge">/dock_done = True</code> when <code class="language-plaintext highlighter-rouge">tz &lt; 0.10 m</code> or the front LiDAR average reads below <code class="language-plaintext highlighter-rouge">0.20 m</code>.</p>
+
+<p><strong>FR-22</strong> — The docking controller shall publish <code class="language-plaintext highlighter-rouge">/dock_done = False</code> and transition to <code class="language-plaintext highlighter-rouge">ABORT</code> if the marker is continuously invisible for 30 seconds during any active docking state, or if any single docking state remains active for more than 45 seconds.</p>
+
+<p><strong>FR-23</strong> — The docking controller shall transition to <code class="language-plaintext highlighter-rouge">OBSTACLE_AVOIDANCE</code> when a proximate obstacle is detected during any docking state (except <code class="language-plaintext highlighter-rouge">FINAL_APPROACH</code>, <code class="language-plaintext highlighter-rouge">SPECIAL_SEARCH</code>, <code class="language-plaintext highlighter-rouge">DONE</code>, <code class="language-plaintext highlighter-rouge">ABORT</code>, and <code class="language-plaintext highlighter-rouge">IDLE</code>), and subsequently perform a 360° rotation scan (<code class="language-plaintext highlighter-rouge">SPECIAL_SEARCH</code>) to re-acquire the marker.</p>
+
+<h3 id="payload-delivery">Payload Delivery</h3>
+
+<p><strong>FR-24</strong> — The shooter controller shall deliver exactly three ping-pong balls per docking event, using a rack-and-pinion servo mechanism actuated via GPIO through <code class="language-plaintext highlighter-rouge">pigpio</code>.</p>
+
+<p><strong>FR-25</strong> — For the static receptacle (<code class="language-plaintext highlighter-rouge">shoot_type = static</code>), the shooter shall fire three shots with the following inter-shot delays: ~0.1 s between shots 1 and 2, and ~7.1 s between shots 2 and 3.</p>
+
+<p><strong>FR-26</strong> — For the dynamic receptacle (<code class="language-plaintext highlighter-rouge">shoot_type = dynamic</code>), the shooter shall poll an ultrasonic sensor (HC-SR04 or equivalent) at regular intervals and only trigger each shot when the measured distance to the moving receptacle is ≤ 0.70 m, using a two-pass load-then-launch sequence.</p>
+
+<p><strong>FR-27</strong> — The shooter shall use a median of multiple ultrasonic samples per measurement to reduce noise, filtering out readings outside the valid range of <code class="language-plaintext highlighter-rouge">0.02 m</code> to <code class="language-plaintext highlighter-rouge">4.0 m</code>.</p>
+
+<p><strong>FR-28</strong> — The shooter controller shall publish <code class="language-plaintext highlighter-rouge">/shoot_done = True</code> upon successful completion of the full delivery sequence and <code class="language-plaintext highlighter-rouge">/shoot_done = False</code> on any exception during hardware actuation.</p>
+
+<p><strong>FR-29</strong> — The shooter controller shall support an <code class="language-plaintext highlighter-rouge">enable_hardware = False</code> simulation mode that completes the delivery sequence after a configurable delay without actuating any GPIO pins.</p>
+
+<hr />
+
+<h2 id="non-functional-requirements">Non-Functional Requirements</h2>
+
+<p><strong>NFR-01</strong> — The entire mission stack shall be launchable with a single top-level <code class="language-plaintext highlighter-rouge">ros2 launch</code> command for both the simulation and real-hardware configurations.</p>
+
+<p><strong>NFR-02</strong> — The system shall expose stable, documented ROS 2 topic contracts (topic names, message types, QoS profiles) so that each subsystem can be developed, tested, and replaced independently.</p>
+
+<p><strong>NFR-03</strong> — All tunable parameters (speeds, thresholds, timeouts, pin assignments, servo pulse widths) shall be exposed as ROS 2 parameters configurable at launch time via a <code class="language-plaintext highlighter-rouge">params.yaml</code> file, with no hardcoded values in business logic.</p>
+
+<p><strong>NFR-04</strong> — The documentation shall be written in Markdown and remain compatible with GitHub Pages rendering.</p>
+
+<p><strong>NFR-05</strong> — The system shall log all state transitions and key sensor readings to <code class="language-plaintext highlighter-rouge">/rosout</code> at the <code class="language-plaintext highlighter-rouge">INFO</code> level to support post-run debugging.</p>
+
+<hr />
+
+<h2 id="constraints">Constraints</h2>
+
+<p><strong>CON-01</strong> — The robot platform is a TurtleBot3 Burger. No modifications to the core drive train or LiDAR mounting are permitted.</p>
+
+<p><strong>CON-02</strong> — The software stack shall target ROS 2 Humble on Ubuntu 22.04.</p>
+
+<p><strong>CON-03</strong> — Line-following techniques are prohibited. Navigation must be SLAM and sensor-based.</p>
+
+<p><strong>CON-04</strong> — The robot shall operate fully autonomously from the moment the mission clock starts. No teleoperation is permitted during the mission.</p>
+
+<p><strong>CON-05</strong> — The mission must be completed within 25 minutes.</p>
+
+<p><strong>CON-06</strong> — No more than six ArUco landmark markers may be used across the entire arena.</p>
+
+<p><strong>CON-07</strong> — The LiDAR’s 360° field of view must not be obstructed by any mechanical or storage component mounted on the robot.</p>
+
+<p><strong>CON-08</strong> — The compute responsibilities are split: the Raspberry Pi 4 (on-board) handles camera processing, docking, and hardware actuation; the remote laptop handles SLAM, navigation, and the FSM.</p>
+
+<hr />
+
+<h2 id="performance-requirements">Performance Requirements</h2>
+
+<p><strong>PR-01</strong> — The robot shall align with delivery receptacles with a lateral positional error of no more than ±10 cm at the point of delivery.</p>
+
+<p><strong>PR-02</strong> — The ball dispensing success rate (ball lands and remains inside the receptacle) shall be at least 70% per shot under normal operating conditions.</p>
+
+<p><strong>PR-03</strong> — The exploration algorithm shall cover at least 80% of the accessible arena area before declaring the map fully explored.</p>
+
+<p><strong>PR-04</strong> — The ArUco marker detection pipeline shall process camera frames in real time (≥10 Hz) and publish pose data with a latency of no more than 200 ms from frame capture.</p>
+
+<p><strong>PR-05</strong> — The docking controller shall complete a full docking sequence (from <code class="language-plaintext highlighter-rouge">SEARCH</code> to <code class="language-plaintext highlighter-rouge">DONE</code>) within 45 seconds per docking attempt under normal visibility conditions.</p>
+
+<hr />
+
+<h2 id="interface-requirements">Interface Requirements</h2>
+
+<p><strong>IR-01</strong> — The operator shall be able to start the full mission stack by typing a single <code class="language-plaintext highlighter-rouge">ros2 launch</code> command on the remote laptop and a single bringup command on the Raspberry Pi.</p>
+
+<p><strong>IR-02</strong> — An RViz instance shall be available on the remote laptop during the mission, displaying the live occupancy grid, robot pose, and planned path.</p>
+
+<p><strong>IR-03</strong> — All inter-subsystem communication shall use standard ROS 2 message types (<code class="language-plaintext highlighter-rouge">Twist</code>, <code class="language-plaintext highlighter-rouge">Bool</code>, <code class="language-plaintext highlighter-rouge">String</code>, <code class="language-plaintext highlighter-rouge">LaserScan</code>, <code class="language-plaintext highlighter-rouge">OccupancyGrid</code>, <code class="language-plaintext highlighter-rouge">Odometry</code>, <code class="language-plaintext highlighter-rouge">TFMessage</code>, <code class="language-plaintext highlighter-rouge">Image</code>, <code class="language-plaintext highlighter-rouge">CameraInfo</code>). No custom message types are used.</p>
+
+<hr />
+
+<h2 id="operating-environment">Operating Environment</h2>
+
+<p><strong>OE-01</strong> — The arena is an indoor, flat-floored warehouse-style maze with walls tall enough to be detected by the TurtleBot3’s LiDAR (minimum wall height: 20 cm).</p>
+
+<p><strong>OE-02</strong> — ArUco markers are placed in well-lit positions. The camera must be able to detect markers from at least 1.5 m distance under ambient indoor lighting.</p>
+
+<p><strong>OE-03</strong> — The dynamic receptacle moves laterally within a fixed range. The ultrasonic sensor mounted on the robot must have a clear line of sight to the receptacle during the delivery phase.</p>
+
+<hr />
+
+<h2 id="safety-requirements">Safety Requirements</h2>
+
+<p><strong>SR-01</strong> — The system shall stop all motor output (publish zero-velocity <code class="language-plaintext highlighter-rouge">Twist</code>) whenever transitioning to the <code class="language-plaintext highlighter-rouge">DONE</code>, <code class="language-plaintext highlighter-rouge">ABORT</code>, or <code class="language-plaintext highlighter-rouge">END</code> states.</p>
+
+<p><strong>SR-02</strong> — The <code class="language-plaintext highlighter-rouge">destroy_node()</code> method of each controller node shall publish a zero-velocity <code class="language-plaintext highlighter-rouge">Twist</code> before shutting down, preventing runaway motion on node death.</p>
+
+<p><strong>SR-03</strong> — The shooter hardware (servos, GPIO) shall be safely de-energised in the <code class="language-plaintext highlighter-rouge">ShooterController.destroy_node()</code> method, setting all servo pulse widths to 0 and releasing the <code class="language-plaintext highlighter-rouge">pigpio</code> connection.</p>
+
+<p><strong>SR-04</strong> — The system may be interrupted at any time with <code class="language-plaintext highlighter-rouge">Ctrl+C</code>. All nodes shall handle <code class="language-plaintext highlighter-rouge">KeyboardInterrupt</code> gracefully and execute their shutdown procedures.</p>
+
+<p><strong>SR-05</strong> — Physical intervention (catching or stopping the robot) by the operator is permitted if the robot is observed to be causing damage to the arena or to itself.</p>
+
+<hr />
+
+<h2 id="acceptance-criteria">Acceptance Criteria</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Criterion</th>
+      <th>Pass Condition</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>AC-01</td>
+      <td>Single-command launch</td>
+      <td>Full stack starts without errors from one <code class="language-plaintext highlighter-rouge">ros2 launch</code> command</td>
+    </tr>
+    <tr>
+      <td>AC-02</td>
+      <td>Map construction</td>
+      <td>A populated occupancy grid is visible in RViz within 30 s of launch</td>
+    </tr>
+    <tr>
+      <td>AC-03</td>
+      <td>Frontier exploration</td>
+      <td>Robot visits at least 80% of accessible arena area before <code class="language-plaintext highlighter-rouge">/map_explored = True</code></td>
+    </tr>
+    <tr>
+      <td>AC-04</td>
+      <td>Marker detection</td>
+      <td><code class="language-plaintext highlighter-rouge">/marker_detected = True</code> published within 3 s of a marker entering the camera frame</td>
+    </tr>
+    <tr>
+      <td>AC-05</td>
+      <td>Zone discrimination</td>
+      <td>FSM correctly identifies <code class="language-plaintext highlighter-rouge">static</code> vs <code class="language-plaintext highlighter-rouge">dynamic</code> zone from marker ID in all test runs</td>
+    </tr>
+    <tr>
+      <td>AC-06</td>
+      <td>Successful docking</td>
+      <td>Robot stops within ±10 cm laterally of the receptacle centre in ≥ 80% of docking attempts</td>
+    </tr>
+    <tr>
+      <td>AC-07</td>
+      <td>Static delivery</td>
+      <td>All 3 balls delivered into the static receptacle without the shooter faulting</td>
+    </tr>
+    <tr>
+      <td>AC-08</td>
+      <td>Dynamic delivery</td>
+      <td>At least 2 of 3 balls delivered into the moving receptacle across a full mission run</td>
+    </tr>
+    <tr>
+      <td>AC-09</td>
+      <td>Fault recovery</td>
+      <td>FSM returns to <code class="language-plaintext highlighter-rouge">EXPLORE</code> within 5 s of a docking <code class="language-plaintext highlighter-rouge">ABORT</code> signal</td>
+    </tr>
+    <tr>
+      <td>AC-10</td>
+      <td>Safe shutdown</td>
+      <td>Robot stops completely within 1 s of <code class="language-plaintext highlighter-rouge">Ctrl+C</code>; no GPIO pins remain energised</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="requirement-traceability">Requirement Traceability</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Requirement</th>
+      <th>Primary Doc</th>
+      <th>Validation Doc</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>FR-01, FR-02, FR-03, FR-04, FR-05</td>
+      <td><a href="subsystem-nav-fsm.md">Software Subsystem: Navigation and FSM</a></td>
+      <td><a href="testing-documentation.md">Testing Documentation</a></td>
+    </tr>
+    <tr>
+      <td>FR-06, FR-07, FR-08, FR-09, FR-10</td>
+      <td><a href="subsystem-software-aruco.md">Software Subsystem: ArUco Marker Detection</a></td>
+      <td><a href="testing-documentation.md">Testing Documentation</a></td>
+    </tr>
+    <tr>
+      <td>FR-11 – FR-17</td>
+      <td><a href="subsystem-nav-fsm.md">Software Subsystem: Navigation and FSM</a></td>
+      <td><a href="interface-control-document.md">Interface Control Document</a></td>
+    </tr>
+    <tr>
+      <td>FR-18 – FR-23</td>
+      <td><a href="high-level-design.md">High Level Design</a></td>
+      <td><a href="testing-documentation.md">Testing Documentation</a></td>
+    </tr>
+    <tr>
+      <td>FR-24 – FR-29</td>
+      <td><a href="subsystem-electrical.md">Electrical Subsystem</a></td>
+      <td><a href="testing-documentation.md">Testing Documentation</a></td>
+    </tr>
+    <tr>
+      <td>NFR-01, NFR-02, NFR-03</td>
+      <td><a href="software-firmware-development.md">Software and Firmware Development</a></td>
+      <td><a href="user-manual.md">User Manual</a></td>
+    </tr>
+    <tr>
+      <td>NFR-04</td>
+      <td><a href="index.md">Home</a></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>NFR-05</td>
+      <td><a href="software-firmware-development.md">Software and Firmware Development</a></td>
+      <td><a href="testing-documentation.md">Testing Documentation</a></td>
+    </tr>
+    <tr>
+      <td>CON-01 – CON-08</td>
+      <td><a href="high-level-design.md">High Level Design</a></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>PR-01 – PR-05</td>
+      <td><a href="high-level-design.md">High Level Design</a></td>
+      <td><a href="testing-documentation.md">Testing Documentation</a></td>
+    </tr>
+    <tr>
+      <td>IR-01 – IR-03</td>
+      <td><a href="interface-control-document.md">Interface Control Document</a></td>
+      <td><a href="user-manual.md">User Manual</a></td>
+    </tr>
+    <tr>
+      <td>SR-01 – SR-05</td>
+      <td><a href="software-firmware-development.md">Software and Firmware Development</a></td>
+      <td><a href="testing-documentation.md">Testing Documentation</a></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="open-assumptions">Open Assumptions</h2>
+
+<ul>
+  <li>The operator launches the system from the documented workspace with the correct ROS 2 environment sourced.</li>
+  <li>Camera and LiDAR topics are available and publishing at the expected rates in the selected runtime mode before the mission clock starts.</li>
+  <li>The arena walls and obstacles are detectable by the TurtleBot3’s LiDAR at all points in the maze.</li>
+  <li>The dynamic receptacle’s period of motion is slow enough for the ultrasonic-gated delivery approach to achieve at least one valid shot window per polling cycle.</li>
+</ul>
+
+  </main>
+</body>
+</html>
