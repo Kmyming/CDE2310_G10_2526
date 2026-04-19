@@ -1,4 +1,12 @@
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  .site-nav,
+  .site-header .page-link,
+  .rss-subscribe,
+  .feed-subscribe {
+    display: none !important;
+  }
+</style>
 <script>
   function renderMermaidBlocks() {
     const codeBlocks = document.querySelectorAll('pre code.language-mermaid, pre code.mermaid');
