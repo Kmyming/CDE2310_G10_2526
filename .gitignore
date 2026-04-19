@@ -50,4 +50,8 @@ rosbag2_*/
 *.active
 *.orig
 
+# Jekyll generated output
+_site/
+docs/_site/
+
 ~$*
