@@ -131,7 +131,7 @@ graph TD
     
     Y --> Z["Publish /cmd_vel_nav<br/>Send to FSM Multiplexer"]
     
-    Z --> AA{Robot at<br/>Goal?<br/>Distance < target_error}
+    Z --> AA{Robot at<br/>Goal?<br/>abs(x-goal_x) &lt; target_error<br/>and abs(y-goal_y) &lt; target_error}
     
     AA -->|Yes| AB["Frontier Reached<br/>Advance to Next Frontier"]
     AB --> A
