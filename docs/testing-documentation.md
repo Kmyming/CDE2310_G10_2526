@@ -399,7 +399,7 @@ Run robot bringup and launch integrated mission stack with real-time settings an
 ### 4) Full Endurance Run (Physical)
 
 **Test Environment:** NUS IDP Studio 2  
-**Test Date:** 13/04/2026 – 15/04/2026  
+**Test Date:** 13/04/2026 – 16/04/2026  
 **Robot State:** Integrated launcher mechanism and navigation stack active.
 
 | Metric | Target | Result |
