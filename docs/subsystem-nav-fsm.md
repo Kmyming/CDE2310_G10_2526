@@ -1,6 +1,6 @@
 ---
-title: Software Subsystem: Navigation and FSM
-description: Frontier exploration, path planning, and mission state-machine design.
+title: "Software Subsystem: Navigation and FSM"
+description: "Frontier exploration, path planning, and mission state-machine design."
 ---
 
 # 🔗 Navigation
@@ -151,6 +151,8 @@ graph TD
     style N fill:#ffccbc
     style T fill:#ffe0b2
     style Z fill:#ffe0b2
+```
+
 ## Control Loop
 
 The exploration controller runs a responsive real-time control loop:
