@@ -1,3 +1,11 @@
+## [2.16.10] - 2026-04-19
+Updated the documentation site's theme, expanded main navigation, and refined content.
+
+### Documentation
+- docs(site): Updated Jekyll theme configuration and site-wide HTML structure.
+- docs(navigation): Expanded main navigation to include all major documentation sections.
+- docs(navigation): Refined "System Overview" heading and clarified Navigation System Flowchart.
+
 ## [2.16.9] - 2026-04-19
 Added comprehensive documentation for the mechanical subsystem and an appendix.
 
