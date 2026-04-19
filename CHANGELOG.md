@@ -1,3 +1,10 @@
+## [2.16.9] - 2026-04-19
+Added comprehensive documentation for the mechanical subsystem and an appendix.
+
+### Documentation
+- docs(mechanical): Documented the mechanical subsystem, covering design, assembly, BOM, actuator mechanics, and iterative changes.
+- docs(appendix): Added an appendix with RViz configuration and ping pong ball release height calculations.
+
 ## [2.16.8] - 2026-04-19
 Expanded and updated the testing documentation with detailed physical robot test results and subsystem summaries for ArUco marker detection and docking.
 
