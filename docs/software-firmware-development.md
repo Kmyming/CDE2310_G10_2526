@@ -24,6 +24,14 @@ description: Build, launch, versioning, and CI workflow documentation.
 
 # Software and Firmware Development
 
+## Document Purpose
+
+This is the **practical guide for development and deployment**: build instructions, workspace setup, launch sequences with examples, runtime configuration, and troubleshooting. This document answers HOW to work with the system.
+
+**References to specification documents:**
+- [interface-control-document.md](interface-control-document.md) - Complete reference of all ROS topics, launch arguments, and timing specifications
+- [subsystem-nav-fsm.md](subsystem-nav-fsm.md) - Navigation and FSM subsystem design documentation
+
 ## Build Environment
 
 - ROS2 Humble
