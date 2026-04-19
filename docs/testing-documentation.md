@@ -1,6 +1,4 @@
 ---
-title: Testing Documentation
-description: Subsystem, integration, and end-to-end validation.
 ---
 
 ## 🔗 Navigation
@@ -24,78 +22,13 @@ description: Subsystem, integration, and end-to-end validation.
 
 # Testing Documentation
 
-## Test Strategy
-
-- Validate each subsystem independently.
-- Validate launch interface compatibility.
-- Validate the integrated mission stack.
-
-## Subsystem Tests
-
-### 1) Package + launch interface sanity
-
-```bash
-ros2 pkg list | grep auto_explore
-ros2 launch auto_explore global_bringup.py --show-args
-ros2 pkg executables auto_explore
-```
-
-Expected: package is discoverable, launch arguments are listed, and executables include mission and controller nodes.
-
-### 2) Navigation infrastructure (SLAM/RViz)
-
-```bash
-ros2 launch auto_explore nav_bringup.py use_sim_time:=true enable_slam:=true enable_rviz:=false
-```
-
-Check:
-
-```bash
-ros2 topic list | grep -E '^/map$|^/map_metadata$'
-```
-
-Expected: `/map` is available and updating.
-
-### 3) FSM only
-
-```bash
-ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
-	enable_fsm:=true enable_navigation:=false enable_markers:=false \
-	enable_docking:=false enable_shooter:=false
-```
-
-Check:
-
-```bash
-ros2 topic echo /states
-```
-
-Expected: FSM publishes `EXPLORE` on startup.
-
-### 4) Exploration controller only
-
-```bash
-ros2 launch auto_explore global_controller_bringup.py use_sim_time:=true \
-	enable_fsm:=false enable_navigation:=true enable_markers:=false \
-	enable_docking:=false enable_shooter:=false
-```
-
-Check:
-
-```bash
-ros2 topic hz /cmd_vel
-ros2 topic echo /map_explored
-```
-
-Expected: `/cmd_vel` publishes while navigating; `/map_explored` eventually becomes true.
-
-#### Navigation Testing Results (Physical Maze)
+## Navigation Testing Results (Physical Maze)
 
 **Test Environment:** TurtleBot 3 Burger in physical maze  
 **ROS 2 Distro:** Humble  
 **Test Date Range:** 27/03 - 31/03/2026  
 
-##### Session S1 (27/03, 3:32 PM) – SLAM Dependency Issues
+### Session S1 (27/03, 3:32 PM) – SLAM Dependency Issues
 
 | Metric | Result |
 |--------|--------|
@@ -123,7 +56,7 @@ Expected: `/cmd_vel` publishes while navigating; `/map_explored` eventually beco
 
 ---
 
-##### Session S2 (27/03, 4:04 PM) – First Movement & Collision
+### Session S2 (27/03, 4:04 PM) – First Movement & Collision
 
 | Metric | Result |
 |--------|--------|
@@ -154,7 +87,7 @@ Expected: `/cmd_vel` publishes while navigating; `/map_explored` eventually beco
 
 ---
 
-##### Session S3 (31/03, 3:27 PM) – Speed Reduction & Success
+### Session S3 (31/03, 3:27 PM) – Speed Reduction & Success
 
 | Metric | Result |
 |--------|--------|
@@ -211,13 +144,13 @@ ros2 topic echo /marker_detected
 
 Expected: the ArUco detection node should publish heartbeat/debug output on `/aruco/debug`, publish `true` on `/marker_detected` when a marker is visible, and publish marker pose transforms on `/tf` with frame names of the form `aruco_marker_<id>`.
 
-#### ArUco Marker Detection Testing Results (Physical Robot)
+## ArUco Marker Detection Testing Results (Physical Robot)
 
 **Test Environment:** TurtleBot 3 Burger with Raspberry Pi camera and printed ArUco marker  
 **ROS 2 Distro:** Humble  
 **Test Date Range:** 02/04/2026  
 
-##### Session A1 (02/04, 3:07 PM) – Heartbeat, Detection State, and Pose Publishing Validation
+### Session A1 (02/04, 3:07 PM) – Heartbeat, Detection State, and Pose Publishing Validation
 
 | Metric | Result |
 |--------|--------|
@@ -277,13 +210,13 @@ ros2 topic echo /docking_state
 
 Expected: docking topics are present, the controller is alive, and the docking state machine publishes valid transitions during a run.
 
-#### Docking Testing Results (Physical Robot)
+## Docking Testing Results (Physical Robot)
 
 **Test Environment:** TurtleBot 3 Burger with camera-based ArUco docking target  
 **ROS 2 Distro:** Humble  
 **Test Date Range:** 04/04 - 08/04/2026  
 
-##### Session D1 (04/04, 5:10 PM) – Initial Path-Based Docking Attempt
+### Session D1 (04/04, 5:10 PM) – Initial Path-Based Docking Attempt
 
 | Metric | Result |
 |--------|--------|
@@ -320,7 +253,7 @@ Expected: docking topics are present, the controller is alive, and the docking s
 
 ---
 
-##### Session D2 (06/04, 4:42 PM) – Pose-Based Docking Controller Success
+### Session D2 (06/04, 4:42 PM) – Pose-Based Docking Controller Success
 
 | Metric | Result |
 |--------|--------|
@@ -567,7 +500,7 @@ Run robot bringup and launch integrated mission stack with real-time settings an
 	- launch logs from `~/.ros/log/`
 	- RViz screenshots or short run recordings
    
-# Testing Documentation: Electrical Subsystem
+## Testing Documentation: Electrical Subsystem
 
 ## Test Strategy
 
@@ -633,3 +566,47 @@ Run robot bringup and launch integrated mission stack with real-time settings an
 - Robot completed the full duration without triggering the OpenCR low-voltage alarm (threshold: 11V).
 - Confirmed battery capacity remains sufficient for the 25-minute requirement, consistent with the predicted worst-case runtime of 54.9 minutes.
 - No system brownouts or reboots occurred during concurrent movement and servo actuation
+
+## Spring-loaded Launcher Subsystem Summary
+
+**Subsystem Owner:** Mechanical / Launcher Integration  
+**Test Period:** Iterative design versions v1-v4, followed by final validation  
+**Physical Environment:** Bench and integrated robot launcher tests
+
+### Technical Performance Measures (TPM)
+
+| TPM | Requirement | Result |
+|---|---|---|
+| TPM1 | Launch vertical range equal to or further than the set docking tolerance of 15 cm | Met in final validation |
+| TPM2 | Vertical drop-off within the height difference of the launch point and the receptacle | Met in final validation |
+| TPM3 | Timing sequence success rate for sequential ball launches | Met in final validation |
+
+### Measures of Effectiveness (MOE)
+
+| MOE | Requirement | Result |
+|---|---|---|
+| MOE1 | All launches deliver balls successfully into the respective delivery receptacle following the correct timing sequence | Met in final validation |
+| MOE2 | Zero mechanical jams during runs | Met in final validation |
+
+### Test Results Summary
+
+| Version | Key Issue | Fix Applied | Outcome |
+|---|---|---|---|
+| V1 | Rack and pinion tolerance too tight; pusher taller than required | Cut wall to fit pinion; reduced pusher height | Partial |
+| V2 | Wiring and servo integration not serviceable; launcher difficult to service; pusher oversized; rack interference near pinion wall | Added wire holes and servo gate mount; made launcher detachable from hex mounts; reduced pusher size and height; removed wall for pinion fit | Improvement |
+| V3 | Ball did not drop nicely into launcher; wall friction reduced launch distance; rack needed more pullback; gear slipping under load | Moved stop further up and increased gear teeth; removed launcher walls and sanded walls; increased gear teeth; reduced gear distance by lowering servo height | Improvement |
+| V4 | Ball could fall out laterally; launcher flexed under load; servo screw fit loose; residual gear distance issue; launch angle insufficient | Added side wall; increased wall thickness; reduced servo screw hole diameter; reduced gear distance more; moved bottom hex mount hole lower to tilt launcher; added servo cover | Success |
+
+### Key Learnings
+
+1. **Geometry and tolerance were critical:** the launcher required multiple iterations before the rack, pinion, and pusher aligned smoothly.
+2. **Launch reliability improved with mechanical refinement:** increasing gear teeth, reducing flex, and tuning the launcher angle improved shot consistency.
+3. **Retention features were necessary:** the side wall, hot glue stops, and masking tape gates prevented ball rollback and launch jams.
+4. **Final validation met the target measures:** the final build satisfied the TPM and MOE targets from the launcher test plan.
+
+### Recommendations
+
+- Retain the final V4 geometry as the baseline launcher design.
+- Replace any suspect logic level shifting or servo interface hardware before future runs if timing drift reappears.
+- Keep the side wall, servo cover, and tilt adjustment features for future iterations.
+- Re-run TPM and MOE checks after any launcher or servo hardware change.
