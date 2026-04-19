@@ -1,6 +1,3 @@
----
----
-
 ## 🔗 Navigation
 
 - [Home](index.md)
