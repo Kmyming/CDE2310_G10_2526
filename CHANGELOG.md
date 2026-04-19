@@ -1,3 +1,9 @@
+## [2.16.7] - 2026-04-19
+Enhanced the Concept of Operations document with a visual representation of the system's workflow.
+
+### Documentation
+- docs(con-ops): Added a system workflow flowchart to the Concept of Operations document.
+
 ## [2.16.6] - 2026-04-19
 Comprehensive update to the ArUco marker detection software subsystem documentation.
 
