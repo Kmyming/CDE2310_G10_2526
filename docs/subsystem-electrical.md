@@ -1,6 +1,4 @@
 ---
-title: Electrical Subsystem
-description: Power, wiring, and actuator integration.
 ---
 
 ## 🔗 Navigation
@@ -66,11 +64,11 @@ $$
 
 The electrical subsystem integrates sensor feedback, PWM servo and ultrasonic sensor control, and power distribution for the launcher mechanism and TurtleBot3 operations as shown below:
 
-![Electrical Subsystem](../electrical_subsystem_images/subsystem_high_level_diagram.png)
+![Electrical Subsystem](assets/electrical_subsystem_images/subsystem_high_level_diagram.png)
 
 _High Level Electrical System Design_
 
-![Electrical Schematic](../electrical_subsystem_images/electrical_schematic.png) 
+![Electrical Schematic](assets/electrical_subsystem_images/electrical_schematic.png) 
 
 _Electrical Schematic Diagram_
 
@@ -78,7 +76,7 @@ _Electrical Schematic Diagram_
 - 11.1V Li-Po → OpenCR1.0 and Turtlebot base.
 - OpenCR 5V/4A pin → terminal block → RPi 4B, SG90, MG90S.
 
-![Terminal Block Connections](../electrical_subsystem_images/terminal_block.jpeg)
+![Terminal Block Connections](assets/electrical_subsystem_images/terminal_block.jpeg)
 
 _Terminal Block_
 

@@ -1,6 +1,4 @@
 ---
-title: Appendix
-description: Legacy reference payloads and supplementary material.
 ---
 
 ## 🔗 Navigation
