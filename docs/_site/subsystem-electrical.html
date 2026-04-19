@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  function renderMermaidBlocks() {
+    const codeBlocks = document.querySelectorAll('pre code.language-mermaid, pre code.mermaid');
+
+    codeBlocks.forEach((codeBlock, index) => {
+      const pre = codeBlock.parentElement;
+      if (!pre || pre.dataset.mermaidProcessed === 'true') {
+        return;
+      }
+
+      const container = document.createElement('div');
+      container.className = 'mermaid';
+      container.id = `mermaid-diagram-${index}`;
+      container.textContent = codeBlock.textContent;
+
+      pre.dataset.mermaidProcessed = 'true';
+      pre.replaceWith(container);
+    });
+
+    if (window.mermaid) {
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'loose',
+        theme: 'default'
+      });
+
+      window.mermaid.run({ querySelector: '.mermaid' });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderMermaidBlocks);
+  } else {
+    renderMermaidBlocks();
+  }
+</script>
+
+</head>
+<body>
+  <main>
+    <h2 id="-navigation">🔗 Navigation</h2>
+
+<ul>
+  <li><a href="index.md">Home</a></li>
+  <li><a href="requirements-specification.md">Requirements Specification</a></li>
+  <li><a href="con-ops.md">Concept of Operations</a></li>
+  <li><a href="high-level-design.md">High Level Design</a></li>
+  <li><a href="subsystem-nav-fsm.md">Software Subsystem: Navigation and FSM</a></li>
+  <li><a href="subsystem-software-aruco.md">Software Subsystem: ArUco Marker Detection</a></li>
+  <li><a href="subsystem-mechanical.md">Mechanical Subsystem</a></li>
+  <li><a href="subsystem-electrical.md">Electrical Subsystem</a></li>
+  <li><a href="interface-control-document.md">Interface Control Document</a></li>
+  <li><a href="software-firmware-development.md">Software and Firmware Development</a></li>
+  <li><a href="testing-documentation.md">Testing Documentation</a></li>
+  <li><a href="user-manual.md">User Manual</a></li>
+  <li><a href="improvements.md">Areas for Improvement</a></li>
+  <li><a href="appendix.md">Appendix</a></li>
+</ul>
+
+<hr />
+<h1 id="electrical-subsystem">Electrical Subsystem</h1>
+
+<h2 id="1-problem-description">1. Problem Description</h2>
+<ul>
+  <li>Integrate SG90 and MG90S servo motors for the launching mechanism into the Turtlebot3 Burger’s existing electrical system.</li>
+  <li>Integrate HC-SR04 ultrasonic sensor (added later) to detect the moving receptacle.</li>
+  <li>Ensure all additions operate within component ratings without disrupting the base Turtlebot3 setup.</li>
+</ul>
+
+<h2 id="2-design-requirements">2. Design Requirements</h2>
+<ul>
+  <li>System must sustain at least 25 minutes of continuous operation per charge.</li>
+  <li>All components must operate within rated voltage and current limits.</li>
+  <li>Current draw must remain within the battery’s maximum safe discharge current (C-rate limit).</li>
+  <li>No unintended actuation of servos or drive motors on startup.</li>
+</ul>
+
+<h2 id="3-power-budget">3. Power Budget</h2>
+
+<h3 id="battery">Battery</h3>
+<ul>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>Voltage: 11.1V</td>
+          <td>Capacity: 1.8 Ah</td>
+          <td>C-Rate: 5C</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>Max safe discharge current: $1.8 \times 5 = 9A$</li>
+  <li>Total usable energy (80% efficiency):<br />
+$11.1 \times 1.8 \times 0.8 = 15.984 \text{ Wh} = 57,542.4 \text{ J}$</li>
+</ul>
+
+<h3 id="worst-case-power-budget-table">Worst Case Power Budget Table</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Component</th>
+      <th>Voltage (V)</th>
+      <th>Current (A)</th>
+      <th>Max Power (W)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>SG90 Servo Motor</td>
+      <td>5</td>
+      <td>0.36 (stall)</td>
+      <td>1.8 (stall)</td>
+    </tr>
+    <tr>
+      <td>MG90S Servo Motor</td>
+      <td>5</td>
+      <td>0.8 (stall)</td>
+      <td>4 (stall)</td>
+    </tr>
+    <tr>
+      <td>HC-SR04 Ultrasonic</td>
+      <td>5</td>
+      <td>0.015 (operational)</td>
+      <td>0.075 (operational)</td>
+    </tr>
+    <tr>
+      <td>BOB-11978 Level Shifter</td>
+      <td>3.3</td>
+      <td>~0</td>
+      <td>~0</td>
+    </tr>
+    <tr>
+      <td>Turtlebot (Movement)</td>
+      <td>11.1</td>
+      <td>0.94 (surge)</td>
+      <td>10.439 (surge)</td>
+    </tr>
+    <tr>
+      <td>RPi Camera v2</td>
+      <td>3.3</td>
+      <td>0.35 (surge)</td>
+      <td>1.15 (surge)</td>
+    </tr>
+  </tbody>
+</table>
+
+\[\text{Operation Time} = \frac{57542.4}{(1.8 + 4 + 0.075 + 10.439 + 1.15)} = 3294.9 \text{ s} \approx 54.9 \text{ minutes}\]
+
+<h3 id="mission-duration-feasibility">Mission Duration Feasibility</h3>
+<ul>
+  <li>Required mission duration: 25 minutes</li>
+  <li>Worst-case runtime: ~54.9 minutes → ~2 full missions possible</li>
+  <li>Battery is sufficient even when all components draw maximum power simultaneously.</li>
+</ul>
+
+<h2 id="4-electrical-subsystem-connections">4. Electrical Subsystem Connections</h2>
+
+<p>The electrical subsystem integrates sensor feedback, PWM servo and ultrasonic sensor control, and power distribution for the launcher mechanism and TurtleBot3 operations as shown below:</p>
+
+<p><img src="assets/electrical_subsystem_images/subsystem_high_level_diagram.png" alt="Electrical Subsystem" /></p>
+
+<p><em>High Level Electrical System Design</em></p>
+
+<p><img src="assets/electrical_subsystem_images/electrical_schematic.png" alt="Electrical Schematic" /></p>
+
+<p><em>Electrical Schematic Diagram</em></p>
+
+<h3 id="power-wiring">Power Wiring</h3>
+<ul>
+  <li>11.1V Li-Po → OpenCR1.0 and Turtlebot base.</li>
+  <li>OpenCR 5V/4A pin → terminal block → RPi 4B, SG90, MG90S.</li>
+</ul>
+
+<p><img src="assets/electrical_subsystem_images/terminal_block.jpeg" alt="Terminal Block Connections" /></p>
+
+<p><em>Terminal Block</em></p>
+
+<ul>
+  <li>RPi 5V power pin → HC-SR04.</li>
+  <li>RPi 3.3V rail → BOB-11978 (LV reference); OpenCR 5V → BOB-11978 (HV reference).</li>
+</ul>
+
+<h3 id="signal-wiring">Signal Wiring</h3>
+<ul>
+  <li>RPi Camera v2 → RPi via CSI-2 ribbon cable.</li>
+  <li>LDS-02 → USB2LDS via UART → RPi via USB.</li>
+  <li>RPi → OpenCR via USB (Dynamixel Protocol 2.0).</li>
+  <li>OpenCR → Dynamixel XL430 motors via TTL at 12V (3-pin JST).</li>
+  <li>RPi GPIO 12 → SG90 (3.3V PWM direct).</li>
+  <li>RPi GPIO 13 → BOB-11978 → MG90S (3.3V → 5V PWM).</li>
+  <li>RPi GPIO 23 → HC-SR04 Trigger; GPIO 24 ← HC-SR04 Echo via 1kΩ–2kΩ divider.</li>
+</ul>
+
+<h3 id="signal-level-conversion">Signal Level Conversion</h3>
+<ul>
+  <li>MG90S: 3.3V PWM (GPIO 13) → BOB-11978 → 5V PWM.</li>
+  <li>HC-SR04 Echo: 5V → 1kΩ–2kΩ voltage divider → ~3.3V at GPIO 24.</li>
+  <li>SG90: 3.3V PWM direct — no conversion needed.</li>
+</ul>
+
+<h2 id="5-design-assumptions">5. Design Assumptions</h2>
+
+<h3 id="voltage">Voltage</h3>
+<ul>
+  <li>All voltages taken as constant nominal values; voltage sag not modelled.</li>
+  <li>Battery held at 11.1V throughout for all calculations.</li>
+  <li>Turtlebot subsystem (Dynamixel motors, OpenCR1.0, RPi 4B, LDS-02, USB2LDS) treated as a single 11.1V unit based on experimentally measured 0.94A surge current — these components are not listed individually in the power budget.</li>
+</ul>
+
+<h3 id="current">Current</h3>
+<ul>
+  <li>All components assumed to draw max/surge current simultaneously and continuously — true worst case, no duty cycling.</li>
+  <li>SG90 and MG90S assumed to stall continuously; stall current from datasheets.</li>
+  <li>HC-SR04 uses operational current (15mA); no significant inrush.</li>
+  <li>RPi Camera v2 surge current (350mA) is a conservative estimate above the observed 250mA from Raspberry Pi forums.</li>
+  <li>BOB-11978 draws negligible current; treated as zero.</li>
+  <li>OpenCR 5V/4A rail analysis confirms sufficient headroom for all connected loads.</li>
+</ul>
+
+<h2 id="6-other-strategies-considered">6. Other Strategies Considered</h2>
+<ul>
+  <li>Powering servos from RPi GPIO pins: immediately ruled out — GPIO limited to 16mA per pin, far below servo requirements.</li>
+  <li>Powering servos from RPi dedicated 5V power pins: a viable option that was overlooked; could be explored in future iterations for simpler wiring.</li>
+</ul>
+
+<h2 id="7-iterative-design-changes">7. Iterative Design Changes</h2>
+
+<h3 id="71-addition-of-bob-11978-logic-level-shifter">7.1 Addition of BOB-11978 Logic Level Shifter</h3>
+<ul>
+  <li>Initially: MG90S controlled via 3.3V PWM directly from RPi GPIO.</li>
+  <li>Issue: MG90S did not respond at all to 3.3V PWM during testing.</li>
+  <li>Fix: BOB-11978 added to step up GPIO 13 PWM from 3.3V → 5V.</li>
+  <li>Result: MG90S operated correctly. SG90 continued to work on 3.3V and required no level shifting.</li>
+</ul>
+
+<h3 id="72-addition-of-hc-sr04-ultrasonic-sensor">7.2 Addition of HC-SR04 Ultrasonic Sensor</h3>
+<ul>
+  <li>Not part of the initial design — added in a later iteration.</li>
+  <li>Trigger: GPIO 23; Echo: GPIO 24 via 1kΩ–2kΩ voltage divider.</li>
+  <li>Power: RPi 5V power pin.</li>
+  <li>Full testing details in the testing documentation.</li>
+</ul>
+
+<h2 id="8-sensor-and-actuator-integration">8. Sensor and Actuator Integration</h2>
+
+<h3 id="81-camera">8.1 Camera</h3>
+<ul>
+  <li>The RPi Camera v2 connects to the Raspberry Pi 4B via a CSI-2 ribbon cable, which carries both power and data. No separate power rail is required.</li>
+</ul>
+
+<h3 id="82-sg90--gate-servo">8.2 SG90 — Gate Servo</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Value / Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Control Pin</td>
+      <td>GPIO 12 (BCM)</td>
+    </tr>
+    <tr>
+      <td>Interface</td>
+      <td>50Hz PWM via pigpio</td>
+    </tr>
+    <tr>
+      <td>Pulse Width</td>
+      <td>500µs = open  |  1500µs = closed</td>
+    </tr>
+    <tr>
+      <td>Power</td>
+      <td>5V from OpenCR via terminal block</td>
+    </tr>
+    <tr>
+      <td>Signal</td>
+      <td>3.3V PWM direct (no level shifting)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="83-mg90s--pinion-servo">8.3 MG90S — Pinion Servo</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Value / Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Control Pin</td>
+      <td>GPIO 13 (BCM)</td>
+    </tr>
+    <tr>
+      <td>Interface</td>
+      <td>50Hz PWM via pigpio</td>
+    </tr>
+    <tr>
+      <td>Pulse Width</td>
+      <td>1000–1300µs = forward  |  1500µs = stop  |  1000µs = reverse</td>
+    </tr>
+    <tr>
+      <td>Power</td>
+      <td>5V from OpenCR via terminal block</td>
+    </tr>
+    <tr>
+      <td>Signal</td>
+      <td>3.3V PWM → BOB-11978 → 5V PWM</td>
+    </tr>
+  </tbody>
+</table>
+
+<ul>
+  <li>Both servos initialise to stop/closed pulse width on startup before any commands are issued.</li>
+</ul>
+
+<h3 id="84-hc-sr04-ultrasonic-sensor">8.4 HC-SR04 Ultrasonic Sensor</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Value / Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Trigger Pin</td>
+      <td>GPIO 23 (BCM) — output</td>
+    </tr>
+    <tr>
+      <td>Echo Pin</td>
+      <td>GPIO 24 (BCM) — via 1kΩ–2kΩ voltage divider</td>
+    </tr>
+    <tr>
+      <td>Power</td>
+      <td>5V from RPi 5V power pin</td>
+    </tr>
+    <tr>
+      <td>Function</td>
+      <td>Detects moving receptacle (Station B)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="85-dynamixel-motors-xl430-w250-t">8.5 Dynamixel Motors (XL430-W250-T)</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Value / Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Motors</td>
+      <td>2× XL430-W250-T (left and right wheel)</td>
+    </tr>
+    <tr>
+      <td>Protocol</td>
+      <td>TTL half-duplex — Dynamixel Protocol 2.0</td>
+    </tr>
+    <tr>
+      <td>Connector</td>
+      <td>3-pin JST</td>
+    </tr>
+    <tr>
+      <td>Controller</td>
+      <td>OpenCR1.0</td>
+    </tr>
+    <tr>
+      <td>Power</td>
+      <td>12V via VDD, DATA, GND pins on OpenCR</td>
+    </tr>
+    <tr>
+      <td>Control path</td>
+      <td>RPi → OpenCR via USB → motors via TTL</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="9-final-design-and-validation">9. Final Design and Validation</h2>
+
+<h3 id="91-runtime">9.1 Runtime</h3>
+<ul>
+  <li>Robot completed the 25-minute mission without OpenCR low-voltage alarm triggering (threshold: 11V).</li>
+  <li>Actual current draw not measured, but alarm absence confirms battery stayed above 11V throughout.</li>
+  <li>Consistent with worst-case predicted runtime of ~54.9 minutes.</li>
+</ul>
+
+<h3 id="92-voltage-stability">9.2 Voltage Stability</h3>
+<ul>
+  <li>No brownouts, unexpected reboots, or servo jitter observed during operation.</li>
+  <li>All rails (OpenCR 5V, RPi 3.3V, 11.1V battery) operated within rated limits.</li>
+</ul>
+
+<h3 id="93-startup-actuation">9.3 Startup Actuation</h3>
+<ul>
+  <li>Confirmed: SG90 and MG90S remained stationary on boot until explicitly commanded.</li>
+  <li>Confirmed: Turtlebot drive motors produced no motion until all ROS data streams were available and a navigation command was issued.</li>
+</ul>
+
+  </main>
+</body>
+</html>

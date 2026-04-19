@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  function renderMermaidBlocks() {
+    const codeBlocks = document.querySelectorAll('pre code.language-mermaid, pre code.mermaid');
+
+    codeBlocks.forEach((codeBlock, index) => {
+      const pre = codeBlock.parentElement;
+      if (!pre || pre.dataset.mermaidProcessed === 'true') {
+        return;
+      }
+
+      const container = document.createElement('div');
+      container.className = 'mermaid';
+      container.id = `mermaid-diagram-${index}`;
+      container.textContent = codeBlock.textContent;
+
+      pre.dataset.mermaidProcessed = 'true';
+      pre.replaceWith(container);
+    });
+
+    if (window.mermaid) {
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'loose',
+        theme: 'default'
+      });
+
+      window.mermaid.run({ querySelector: '.mermaid' });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderMermaidBlocks);
+  } else {
+    renderMermaidBlocks();
+  }
+</script>
+
+</head>
+<body>
+  <main>
+    <h2 id="-navigation">🔗 Navigation</h2>
+
+<ul>
+  <li><a href="index.md">Home</a></li>
+  <li><a href="requirements-specification.md">Requirements Specification</a></li>
+  <li><a href="con-ops.md">Concept of Operations</a></li>
+  <li><a href="high-level-design.md">High Level Design</a></li>
+  <li><a href="subsystem-nav-fsm.md">Software Subsystem: Navigation and FSM</a></li>
+  <li><a href="subsystem-software-aruco.md">Software Subsystem: ArUco Marker Detection</a></li>
+  <li><a href="subsystem-mechanical.md">Mechanical Subsystem</a></li>
+  <li><a href="subsystem-electrical.md">Electrical Subsystem</a></li>
+  <li><a href="interface-control-document.md">Interface Control Document</a></li>
+  <li><a href="software-firmware-development.md">Software and Firmware Development</a></li>
+  <li><a href="testing-documentation.md">Testing Documentation</a></li>
+  <li><a href="user-manual.md">User Manual</a></li>
+  <li><a href="improvements.md">Areas for Improvement</a></li>
+  <li><a href="appendix.md">Appendix</a></li>
+</ul>
+
+<hr />
+
+<h1 id="software-and-firmware-development">Software and Firmware Development</h1>
+
+<h2 id="document-purpose">Document Purpose</h2>
+
+<p>This is the <strong>practical guide for development and deployment</strong>: build instructions, workspace setup, launch sequences with examples, runtime configuration, and troubleshooting. This document answers HOW to work with the system.</p>
+
+<p><strong>References to specification documents:</strong></p>
+<ul>
+  <li><a href="interface-control-document.md">interface-control-document.md</a> - Complete reference of all ROS topics, launch arguments, and timing specifications</li>
+  <li><a href="subsystem-nav-fsm.md">subsystem-nav-fsm.md</a> - Navigation and FSM subsystem design documentation</li>
+</ul>
+
+<h2 id="build-environment">Build Environment</h2>
+
+<ul>
+  <li>ROS2 Humble</li>
+  <li>TurtleBot3 workspace at <code class="language-plaintext highlighter-rouge">~/turtlebot3_ws</code></li>
+  <li>Python 3 tooling for launch and runtime scripts</li>
+  <li>Runtime dependencies: <code class="language-plaintext highlighter-rouge">slam_toolbox</code>, <code class="language-plaintext highlighter-rouge">turtlebot3</code>, <code class="language-plaintext highlighter-rouge">turtlebot3_gazebo</code>, <code class="language-plaintext highlighter-rouge">opencv-python</code></li>
+</ul>
+
+<h2 id="prerequisites">Prerequisites</h2>
+
+<ul>
+  <li>TurtleBot3 Burger with camera sensor for marker detection and real-robot validation</li>
+  <li>A laptop with ROS2 Humble and workspace access</li>
+  <li>Raspberry Pi side robot bringup available for hardware runs</li>
+</ul>
+
+<h2 id="versioning-and-release-notes">Versioning and Release Notes</h2>
+
+<ul>
+  <li>Use semantic versioning for package and docs releases.</li>
+</ul>
+
+<h2 id="changelog-reference">CHANGELOG Reference</h2>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">CHANGELOG.md</code> is the repository-level version-history reference.</li>
+  <li>Keep it as a read-only artifact for documentation purposes.</li>
+</ul>
+
+<h2 id="ci-and-agentic-changelog-pipeline">CI and Agentic Changelog Pipeline</h2>
+
+<p>Pull-request documentation validation is defined in <code class="language-plaintext highlighter-rouge">.github/workflows/docs-build.yml</code>.
+Documentation site deployment is defined in <code class="language-plaintext highlighter-rouge">.github/workflows/docs-pages.yml</code>.</p>
+
+<p>This repository uses a custom CI pipeline powered by <a href="https://github.com/qodo-ai/pr-agent">Qodo PR-Agent</a> and Google’s <strong>Gemini 2.5 Flash</strong> model to automate pull request management and documentation, standardize our release documentation, enforce Semantic Versioning (SemVer 2.0.0), and reduce administrative overhead.</p>
+
+<p>Whenever a new Pull Request is opened, the pipeline automatically executes the following suite:</p>
+<ol>
+  <li><strong>Hardware-Aware Commit Scraping:</strong> Bypasses Git’s “binary blindspot” by scraping local git history to document physical CAD changes (<code class="language-plaintext highlighter-rouge">.SLDPRT</code>, <code class="language-plaintext highlighter-rouge">.STL</code>, etc.) before the AI runs.</li>
+  <li><strong>Auto-Describe:</strong> Analyzes the code diff and commit history to automatically write a comprehensive PR Title and Description.</li>
+  <li><strong>Auto-Review &amp; Improve:</strong> Scans the code for bugs and leaves actionable, inline code suggestions.</li>
+  <li><strong>Auto-Changelog:</strong> Generates a strict, version-bumped <code class="language-plaintext highlighter-rouge">CHANGELOG.md</code> block based on your branch’s features and fixes.</li>
+</ol>
+
+<h3 id="developer-workflow">Developer Workflow</h3>
+
+<p>Developers must follow this workflow when merging code into the <code class="language-plaintext highlighter-rouge">main</code> branch.</p>
+
+<h4 id="1-write-conventional-commits">1. Write Conventional Commits</h4>
+<p>Make sure you are editing on your <strong>LOCAL BRANCH</strong> and not the <code class="language-plaintext highlighter-rouge">main</code> branch!</p>
+
+<p>The AI agent calculates the next version number strictly based on the prefixes used in your commit messages and PR title. You <strong>must</strong> use one of the following prefixes:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">feat: </code> (New features, architectural additions, nodes. ‘MAJOR’ is to be included in the commit message for MAJOR versioning, else it defaults to MINOR versioning)</li>
+  <li><code class="language-plaintext highlighter-rouge">fix: </code> (Bug fixes, path resolutions, logic errors)</li>
+  <li><code class="language-plaintext highlighter-rouge">docs: </code> (Updates to README, comments, or documentation)</li>
+  <li><code class="language-plaintext highlighter-rouge">test: </code> (Adding or updating tests/simulations)</li>
+</ul>
+
+<p>for hardware/CAD changes: <strong>BE DESCRIPTIVE</strong> in your commit messages as the CHANGELOG.md will be updated based on your commit messages.</p>
+
+<p><em>Example: <code class="language-plaintext highlighter-rouge">feat(navigation): integrate frontier exploration algorithm</code></em></p>
+
+<h4 id="2-open-a-pull-request">2. Open a Pull Request</h4>
+
+<p>Push your code to your <strong>LOCAL BRANCH</strong> and push that branch to GitHub.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git push origin <span class="o">[</span>local_branch_name]
+</code></pre></div></div>
+<p>Open a Pull Request against <code class="language-plaintext highlighter-rouge">main</code>. 
+if you have Github CLI:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gh <span class="nb">pr </span>create <span class="nt">--fill</span>
+</code></pre></div></div>
+<p>(auto-fills latest commit message as title)</p>
+<ul>
+  <li><strong>The Auto-Review &amp; changelog update:</strong> The GitHub Action will immediately wake up, analyze your code diffs, and post a summary of your changes as a comment on the PR. <strong>VERIFY</strong> the documentation on your own and make necessary edits.</li>
+</ul>
+
+<p><strong>Manual Commands:</strong>
+If you need the AI to re-run a specific task, you can type any of these commands as a standard comment in your Pull Request thread:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">/update_changelog</code> - Regenerates the changelog.</li>
+  <li><code class="language-plaintext highlighter-rouge">/describe</code> - Regenerates the PR description.</li>
+  <li><code class="language-plaintext highlighter-rouge">/review</code> - Re-runs the high-level review.</li>
+  <li><code class="language-plaintext highlighter-rouge">/improve</code> - Scans for new inline code improvements.</li>
+  <li><code class="language-plaintext highlighter-rouge">/ask [question]</code> - Ask the AI a specific question about the PR’s code.</li>
+</ul>
+
+<h3 id="ai-pipeline-architecture">AI Pipeline Architecture</h3>
+
+<p>This repository utilizes a highly customized, hardware-aware CI/CD pipeline, reads binary CAD diffs (e.g., SolidWorks, STL files) by using a pre-processing commit scraper combined with a native Python implementation of <a href="https://github.com/qodo-ai/pr-agent">Qodo PR-Agent</a>, powered by <strong>Google Gemini 2.5 Flash</strong>.</p>
+
+<h4 id="data-flow-diagram">Data Flow Diagram</h4>
+
+<pre><code class="language-mermaid">sequenceDiagram
+    actor Developer
+    participant GitHub as GitHub Actions
+    participant Scraper as Context Scraper (Bash)
+    participant Agent as PR-Agent CLI (Python)
+    participant Gemini as Gemini 2.5 Flash
+
+    Developer-&gt;&gt;GitHub: Open PR or Post Comment
+    GitHub-&gt;&gt;Scraper: Trigger Workflow (fetch-depth: 0)
+    Scraper-&gt;&gt;GitHub: Read git log &amp; inject commits into PR Body
+    GitHub-&gt;&gt;Agent: Initialize raw Python environment
+    Agent-&gt;&gt;Gemini: Send code diff + commit history payload
+    Note right of Agent: 1,000,000 token limit override
+    Gemini--&gt;&gt;Agent: Return generated reviews &amp; changelog
+    Agent-&gt;&gt;GitHub: Update PR Description, Post Reviews, Update CHANGELOG.md
+</code></pre>
+
+<h2 id="workspace-setup">Workspace Setup</h2>
+
+<ol>
+  <li>Clone the repository into the ROS workspace:</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd</span> ~/turtlebot3_ws/src
+git clone https://github.com/Kmyming/CDE2310_G10_2526.git CDE2310_G10_2526
+<span class="nb">cd</span> ~/turtlebot3_ws
+</code></pre></div></div>
+
+<ol>
+  <li>Build <code class="language-plaintext highlighter-rouge">auto_explore</code> with colcon:</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>colcon build <span class="nt">--packages-select</span> auto_explore
+<span class="nb">source install</span>/setup.bash
+</code></pre></div></div>
+
+<ol>
+  <li>Verify package discovery:</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ros2 pkg list | <span class="nb">grep </span>auto_explore
+</code></pre></div></div>
+
+<p>Expected output:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>auto_explore
+</code></pre></div></div>
+
+<h2 id="package-layout">Package Layout</h2>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">remote_laptop_src/launch/</code></li>
+  <li><code class="language-plaintext highlighter-rouge">remote_laptop_src/auto_explore/auto_explore/</code></li>
+  <li><code class="language-plaintext highlighter-rouge">remote_laptop_src/config/</code></li>
+</ul>
+
+<h2 id="build-and-run-workflow">Build and Run Workflow</h2>
+
+<ul>
+  <li>Use <code class="language-plaintext highlighter-rouge">global_bringup.py</code> for integrated mission startup.</li>
+  <li>Use <code class="language-plaintext highlighter-rouge">global_controller_bringup.py</code> for controller-only bringup.</li>
+  <li>Use <code class="language-plaintext highlighter-rouge">nav_bringup.py</code> for navigation-only bringup.</li>
+</ul>
+
+<h2 id="additional-setup-real-robot">Additional Setup (Real Robot)</h2>
+
+<h3 id="laptop-shooter-dependency">Laptop shooter dependency</h3>
+
+<p>Install pigpio Python client on the laptop and the Raspberry Pi:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip3 <span class="nb">install </span>pigpio
+</code></pre></div></div>
+
+<h3 id="raspberry-pi-boot-time-prerequisites">Raspberry Pi boot-time prerequisites</h3>
+
+<p>The Pi should run pigpiod and show its IP at boot.</p>
+
+<p>Add these commands to <code class="language-plaintext highlighter-rouge">~/.bashrc</code> on the Raspberry Pi during setup:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> <span class="o">&gt;&gt;</span> ~/.bashrc <span class="o">&lt;&lt;</span> <span class="sh">'</span><span class="no">EOF</span><span class="sh">'
+sudo pigpiod
+hostname -I
+</span><span class="no">EOF
+
+</span><span class="nb">source</span> ~/.bashrc
+</code></pre></div></div>
+
+<h3 id="cleanup-scripts-setup">Cleanup scripts setup</h3>
+
+<h4 id="laptop-cleanup-script">laptop cleanup script:</h4>
+<p>Create the cleanup script in the laptop home directory and then add the alias to <code class="language-plaintext highlighter-rouge">~/.bashrc</code>.</p>
+
+<ol>
+  <li>Create <code class="language-plaintext highlighter-rouge">~/cleanup_duplicate_drivers.sh</code> in the home directory with the following content:</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> <span class="o">&gt;</span> ~/cleanup_duplicate_drivers.sh <span class="o">&lt;&lt;</span> <span class="sh">'</span><span class="no">EOF</span><span class="sh">'
+#!/bin/bash
+# cleanup_duplicate_drivers.sh
+# Removes duplicate turtlebot3 driver processes that cause queue-full errors
+# Run this BEFORE launching the system with 'start' command
+
+set -e
+
+echo "=========================================="
+echo "TurtleBot3 Duplicate Driver Cleanup"
+echo "=========================================="
+echo ""
+
+echo "[1/5] Checking for duplicate launches on robot..."
+DUPLICATE_COUNT=</span><span class="si">$(</span>sshrp <span class="s2">"ps aux | grep robot.launch.py | grep -v grep | wc -l"</span> 2&gt;/dev/null <span class="o">||</span> <span class="nb">echo</span> <span class="s2">"0"</span><span class="si">)</span><span class="sh">
+
+if [ "</span><span class="nv">$DUPLICATE_COUNT</span><span class="sh">" -le 0 ]; then
+    echo "     ✓ No duplicate launches found - system is clean"
+else
+    echo "     ⚠ Found </span><span class="nv">$DUPLICATE_COUNT</span><span class="sh"> launch instances (should be 1 or 0)"
+fi
+
+echo ""
+echo "[2/5] Stopping all robot launch processes remotely..."
+sshrp "pkill -9 -f 'robot.launch.py' 2&gt;/dev/null &amp;&amp; echo '      Launches stopped'" || true
+sleep 1
+
+echo ""
+echo "[3/5] Cleaning up driver processes (ld08_driver, robot_state_publisher, v4l2_camera)..."
+sshrp "pkill -9 -f 'ld08_driver|robot_state_publisher|v4l2_camera' 2&gt;/dev/null &amp;&amp; echo '      Drivers cleaned'" || true
+sleep 2
+
+echo ""
+echo "[4/5] Restarting ROS daemon on laptop for clean graph..."
+ros2 daemon stop &gt;/dev/null 2&gt;&amp;1 || true
+sleep 1
+ros2 daemon start &gt;/dev/null 2&gt;&amp;1
+echo "      ✓ Daemon restarted"
+
+echo ""
+echo "[5/5] Verifying cleanup - checking ROS node graph..."
+NODE_COUNT=</span><span class="si">$(</span>ros2 node list 2&gt;&amp;1 | <span class="nb">wc</span> <span class="nt">-l</span><span class="si">)</span><span class="sh">
+
+if ros2 node list 2&gt;&amp;1 | grep -q "nodes in the graph that share an exact name"; then
+    echo "      ⚠ WARNING: Still detected duplicate node names"
+    echo ""
+    echo "Current nodes:"
+    ros2 node list 2&gt;&amp;1 | tail -n +2
+else
+    echo "      ✓ Node graph is clean (no duplicate warnings)"
+    if [ "</span><span class="nv">$NODE_COUNT</span><span class="sh">" -gt 1 ]; then
+        echo ""
+        echo "Active nodes:"
+        ros2 node list 2&gt;&amp;1 | grep -v WARNING || true
+    fi
+fi
+
+echo ""
+echo "=========================================="
+echo "Cleanup Complete!"
+echo "=========================================="
+echo ""
+echo "Next step: Run 'start &lt;robot_ip&gt;' to launch the system"
+echo "Example:   start 172.20.10.5"
+echo ""
+</span><span class="no">EOF
+</span></code></pre></div></div>
+
+<ol>
+  <li>Make the script executable:</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">chmod</span> +x ~/cleanup_duplicate_drivers.sh
+</code></pre></div></div>
+
+<ol>
+  <li>Add the alias to the laptop <code class="language-plaintext highlighter-rouge">~/.bashrc</code>:</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">alias </span><span class="nv">cleanup</span><span class="o">=</span><span class="s1">'~/cleanup_duplicate_drivers.sh'</span>
+</code></pre></div></div>
+
+<ol>
+  <li>Reload the shell configuration:</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">source</span> ~/.bashrc
+</code></pre></div></div>
+
+<p>This script depends on the <code class="language-plaintext highlighter-rouge">sshrp</code> alias already defined in the laptop <code class="language-plaintext highlighter-rouge">~/.bashrc</code>, because it uses that alias to reach the Raspberry Pi and stop duplicate robot-side driver processes.</p>
+
+<h4 id="rpi-cleanup-script">RPi cleanup script:</h4>
+
+<p>Set up an RPi-side cleanup command so <code class="language-plaintext highlighter-rouge">rosbustop</code> can be run as a normal bash command.</p>
+
+<ol>
+  <li>Create the cleanup script in the RPi home directory:</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> <span class="o">&gt;</span> ~/rosbu_cleanup.sh <span class="o">&lt;&lt;</span> <span class="sh">'</span><span class="no">EOF</span><span class="sh">'
+#!/bin/bash
+# rosbu_cleanup.sh
+# Force-clean TurtleBot3 bringup and camera stacks on RPi
+
+set +e
+
+echo "=========================================="
+echo "RPi ROS Bringup/Camera Cleanup (rosbustop)"
+echo "=========================================="
+
+TARGET_PATTERNS=(
+    "robot.launch.py"
+    "ld08_driver"
+    "robot_state_publisher"
+    "turtlebot3_ros"
+    "v4l2_camera_node"
+)
+
+echo "[1/4] Killing process groups for bringup/camera targets..."
+for pattern in "</span><span class="k">${</span><span class="nv">TARGET_PATTERNS</span><span class="p">[@]</span><span class="k">}</span><span class="sh">"; do
+    for pid in </span><span class="si">$(</span>pgrep <span class="nt">-f</span> <span class="s2">"</span><span class="nv">$pattern</span><span class="s2">"</span> 2&gt;/dev/null<span class="si">)</span><span class="sh">; do
+        pgid=</span><span class="si">$(</span>ps <span class="nt">-o</span> <span class="nv">pgid</span><span class="o">=</span> <span class="nt">-p</span> <span class="s2">"</span><span class="nv">$pid</span><span class="s2">"</span> 2&gt;/dev/null | <span class="nb">tr</span> <span class="nt">-d</span> <span class="s1">' '</span><span class="si">)</span><span class="sh">
+        if [ -n "</span><span class="nv">$pgid</span><span class="sh">" ]; then
+            kill -TERM -- -"</span><span class="nv">$pgid</span><span class="sh">" 2&gt;/dev/null || true
+            sleep 0.05
+            kill -KILL -- -"</span><span class="nv">$pgid</span><span class="sh">" 2&gt;/dev/null || true
+        fi
+    done
+done
+
+echo "[2/4] Killing child camera processes..."
+for cam_parent in </span><span class="si">$(</span>pgrep <span class="nt">-f</span> <span class="s2">"v4l2_camera|camera"</span> 2&gt;/dev/null<span class="si">)</span><span class="sh">; do
+    pkill -TERM -P "</span><span class="nv">$cam_parent</span><span class="sh">" 2&gt;/dev/null || true
+    sleep 0.05
+    pkill -KILL -P "</span><span class="nv">$cam_parent</span><span class="sh">" 2&gt;/dev/null || true
+done
+
+echo "[3/4] Fallback TERM/KILL sweep by process name..."
+for pattern in "</span><span class="k">${</span><span class="nv">TARGET_PATTERNS</span><span class="p">[@]</span><span class="k">}</span><span class="sh">"; do
+    pkill -TERM -f "</span><span class="nv">$pattern</span><span class="sh">" 2&gt;/dev/null || true
+done
+sleep 0.2
+for pattern in "</span><span class="k">${</span><span class="nv">TARGET_PATTERNS</span><span class="p">[@]</span><span class="k">}</span><span class="sh">"; do
+    pkill -KILL -f "</span><span class="nv">$pattern</span><span class="sh">" 2&gt;/dev/null || true
+done
+
+echo "[4/4] Cleanup complete. Remaining matching processes (if any):"
+for pattern in "</span><span class="k">${</span><span class="nv">TARGET_PATTERNS</span><span class="p">[@]</span><span class="k">}</span><span class="sh">"; do
+    pgrep -af "</span><span class="nv">$pattern</span><span class="sh">" 2&gt;/dev/null || true
+done
+
+echo "Done: bringup and camera processes force-cleaned."
+</span><span class="no">EOF
+</span></code></pre></div></div>
+
+<ol>
+  <li>Make the script executable:</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">chmod</span> +x ~/rosbu_cleanup.sh
+</code></pre></div></div>
+
+<ol>
+  <li>Add the alias to <code class="language-plaintext highlighter-rouge">~/.bashrc</code> on the RPi:</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">echo</span> <span class="s2">"alias rosbustop='~/rosbu_cleanup.sh'"</span> <span class="o">&gt;&gt;</span> ~/.bashrc
+</code></pre></div></div>
+
+<ol>
+  <li>Reload shell config:</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">source</span> ~/.bashrc
+</code></pre></div></div>
+
+<ol>
+  <li>Verify command registration:</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">type </span>rosbustop
+</code></pre></div></div>
+
+<ol>
+  <li>Run cleanup before relaunching bringup/camera stacks:</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>rosbustop
+</code></pre></div></div>
+
+<h3 id="real-robot-launch-alias-setup">Real-robot launch alias setup</h3>
+
+<p>Reusable shell helper:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> <span class="o">&gt;&gt;</span> ~/.bashrc <span class="o">&lt;&lt;</span> <span class="sh">'</span><span class="no">EOF</span><span class="sh">'
+start () {
+    if [ -z "</span><span class="nv">$1</span><span class="sh">" ]; then
+        read -rp "Pi IP: " PI_IP
+    else
+        PI_IP="</span><span class="nv">$1</span><span class="sh">"
+    fi
+
+    if [ -z "</span><span class="nv">$2</span><span class="sh">" ]; then
+        MARKERS_ENABLED="true"
+    else
+        MARKERS_ENABLED="</span><span class="nv">$2</span><span class="sh">"
+    fi
+
+    if [ -z "</span><span class="nv">$3</span><span class="sh">" ]; then
+        POSE_PUBLISHER_ENABLED="true"
+    else
+        POSE_PUBLISHER_ENABLED="</span><span class="nv">$3</span><span class="sh">"
+    fi
+
+    # Reset potentially stale overlays before launching.
+    unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH PYTHONPATH
+    source /opt/ros/humble/setup.bash
+    source ~/turtlebot3_ws/install/local_setup.bash
+
+    # Prevent RViz from picking incompatible snap libc/pthread shims.
+    unset LD_PRELOAD
+    if [ -n "</span><span class="nv">$LD_LIBRARY_PATH</span><span class="sh">" ]; then
+        export LD_LIBRARY_PATH="</span><span class="si">$(</span><span class="nb">printf</span> <span class="s1">'%s'</span> <span class="s2">"</span><span class="nv">$LD_LIBRARY_PATH</span><span class="s2">"</span> | <span class="nb">tr</span> <span class="s1">':'</span> <span class="s1">'\n'</span> | <span class="nb">grep</span> <span class="nt">-v</span> <span class="s1">'^/snap/core20/current/lib'</span> | <span class="nb">paste</span> <span class="nt">-sd</span>: -<span class="si">)</span><span class="sh">"
+    fi
+
+    # Prevent duplicate local controller nodes from prior interrupted launches.
+    pkill -f '/auto_explore/mission_controller|/auto_explore/exploration_controller|/auto_explore/pose_publisher|/auto_explore/docking_controller|/auto_explore/shooter_controller' &gt;/dev/null 2&gt;&amp;1 || true
+
+    ros2 daemon stop &gt;/dev/null 2&gt;&amp;1 || true
+    ros2 daemon start &gt;/dev/null 2&gt;&amp;1
+
+    ros2 launch auto_explore global_bringup.py </span><span class="se">\</span><span class="sh">
+        use_sim_time:=false </span><span class="se">\</span><span class="sh">
+        enable_slam:=true </span><span class="se">\</span><span class="sh">
+        enable_rviz:=true </span><span class="se">\</span><span class="sh">
+        enable_markers:=true </span><span class="se">\</span><span class="sh">
+        enable_pose_publisher:=true </span><span class="se">\</span><span class="sh">
+        enable_docking:=true </span><span class="se">\</span><span class="sh">
+        enable_shooter:=true </span><span class="se">\</span><span class="sh">
+        shooter_enable_hardware:=true </span><span class="se">\</span><span class="sh">
+        shooter_pigpiod_host:="</span><span class="nv">$PI_IP</span><span class="sh">"
+}
+</span><span class="no">EOF
+
+</span><span class="nb">source</span> ~/.bashrc
+</code></pre></div></div>
+
+<h3 id="rebuild-after-edits">Rebuild after edits</h3>
+
+<p>If launch or config changes do not appear:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd</span> ~/turtlebot3_ws
+<span class="nb">source</span> /opt/ros/humble/setup.bash
+colcon build <span class="nt">--packages-select</span> auto_explore
+<span class="nb">source install</span>/setup.bash
+</code></pre></div></div>
+
+<h2 id="launch-sequences">Launch Sequences</h2>
+
+<p>Operational launch sequences are maintained in the user-facing runbook: <code class="language-plaintext highlighter-rouge">docs/user-manual.md</code>.</p>
+
+<h2 id="launch-arguments-by-layer">Launch Arguments by Layer</h2>
+
+<h3 id="top-level-integrated-launcher-global_bringuppy">Top-level integrated launcher (<code class="language-plaintext highlighter-rouge">global_bringup.py</code>)</h3>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">use_sim_time</code></li>
+  <li><code class="language-plaintext highlighter-rouge">enable_slam</code></li>
+  <li><code class="language-plaintext highlighter-rouge">enable_rviz</code></li>
+  <li><code class="language-plaintext highlighter-rouge">slam_params_file</code></li>
+  <li><code class="language-plaintext highlighter-rouge">enable_fsm</code></li>
+  <li><code class="language-plaintext highlighter-rouge">enable_navigation</code></li>
+  <li><code class="language-plaintext highlighter-rouge">enable_markers</code></li>
+  <li><code class="language-plaintext highlighter-rouge">enable_pose_publisher</code></li>
+  <li><code class="language-plaintext highlighter-rouge">enable_docking</code></li>
+  <li><code class="language-plaintext highlighter-rouge">enable_shooter</code></li>
+  <li><code class="language-plaintext highlighter-rouge">shooter_enable_hardware</code></li>
+</ul>
+
+<h3 id="controller-launcher-global_controller_bringuppy">Controller launcher (<code class="language-plaintext highlighter-rouge">global_controller_bringup.py</code>)</h3>
+
+<p>Includes all controller toggles and shooter tuning arguments:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">shooter_pigpiod_host</code></li>
+  <li><code class="language-plaintext highlighter-rouge">shooter_pigpiod_port</code></li>
+  <li><code class="language-plaintext highlighter-rouge">shooter_ultrasonic_trigger_pin</code></li>
+  <li><code class="language-plaintext highlighter-rouge">shooter_ultrasonic_echo_pin</code></li>
+  <li><code class="language-plaintext highlighter-rouge">shooter_ultrasonic_distance_threshold_m</code></li>
+  <li><code class="language-plaintext highlighter-rouge">shooter_ultrasonic_simulated_distance_m</code></li>
+  <li><code class="language-plaintext highlighter-rouge">shooter_engage_profile</code></li>
+</ul>
+
+<h3 id="navigation-launcher-nav_bringuppy">Navigation launcher (<code class="language-plaintext highlighter-rouge">nav_bringup.py</code>)</h3>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">use_sim_time</code></li>
+  <li><code class="language-plaintext highlighter-rouge">enable_slam</code></li>
+  <li><code class="language-plaintext highlighter-rouge">enable_rviz</code></li>
+  <li><code class="language-plaintext highlighter-rouge">slam_params_file</code></li>
+  <li><code class="language-plaintext highlighter-rouge">slam_start_delay_sec</code></li>
+  <li><code class="language-plaintext highlighter-rouge">rviz_start_delay_sec</code></li>
+</ul>
+
+<h2 id="rviz-configuration-update">RViz Configuration Update</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cp</span> ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz ~/tb3_cartographer.rviz.backup
+nano ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz
+</code></pre></div></div>
+
+<p>Use the team-approved RViz file content for the cartographer view in Appendix A. Verify with:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>rviz2 <span class="nt">-d</span> ~/turtlebot3_ws/src/turtlebot3/turtlebot3_cartographer/rviz/tb3_cartographer.rviz
+</code></pre></div></div>
+
+<h2 id="launch-components">Launch Components</h2>
+
+<p>The integrated bringup includes:</p>
+
+<ul>
+  <li>SLAM Toolbox</li>
+  <li>RViz visualization</li>
+  <li>Mission FSM</li>
+  <li>Exploration controller</li>
+  <li>ArUco pose publisher</li>
+</ul>
+
+<h2 id="configuration-management">Configuration Management</h2>
+
+<ul>
+  <li>Describe the SLAM and navigation parameter files.</li>
+  <li>Record which settings are source-of-truth and where they live.</li>
+</ul>
+
+  </main>
+</body>
+</html>
