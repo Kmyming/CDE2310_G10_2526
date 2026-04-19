@@ -3,7 +3,7 @@ title: Electrical Subsystem
 description: Power, wiring, and actuator integration.
 ---
 
-# 🔗 Navigation
+## 🔗 Navigation
 
 - [Home](index.md)
 - [Requirements Specification](requirements-specification.md)

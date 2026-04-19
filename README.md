@@ -1,79 +1,17 @@
-# TurtleBot3 Autonomous Exploration & Mission Control System
+# Fundamentals of System Design – CDE2310
 
-This repository contains the ROS2-based TurtleBot3 mission stack for autonomous exploration, ArUco marker detection, docking, and payload delivery.
+> A ROS2-based autonomous mission stack using LiDAR, RPi Camera & Rack-and-Pinion Spring-Loaded Launcher for a warehouse maze environment deployment.
 
-The markdown files under [docs/](docs/) are the primary documentation deliverable. GitHub Pages is only a supplementary rendered view of the same content.
+## 📘 Project Overview
 
-## Quick Start
+Welcome to the official repository for our CDE2310 System Design project — a fully autonomous robot capable of:
 
-```bash
-cd ~/turtlebot3_ws/src
-git clone https://github.com/Kmyming/CDE2310_G10_2526.git CDE2310_G10_2526
-cd ~/turtlebot3_ws
-colcon build --packages-select auto_explore
-source install/setup.bash
-```
+- 🌐 Frontier exploration, real-time mapping, & FSM Orchestration
+- 🌡️ Detecting static and dynamic delivery zones via ArUco Markers
+- 🚀 Dock at delivery zones to launch ping pong ball payloads into delivery receptacles
 
-Verify the package is discoverable:
-
-```bash
-ros2 pkg list | grep auto_explore
-```
-
-## Launch Entry Points
-
-- [Software and Firmware Development](docs/software-firmware-development.md) for the build and launch workflow.
-- `remote_laptop_src/launch/global_bringup.py` is the top-level integrated bringup.
-- `remote_laptop_src/launch/global_controller_bringup.py` declares the shooter tuning arguments such as `shooter_pigpiod_host`, `shooter_pigpiod_port`, `shooter_ultrasonic_trigger_pin`, `shooter_ultrasonic_echo_pin`, `shooter_ultrasonic_distance_threshold_m`, `shooter_ultrasonic_simulated_distance_m`, and `shooter_engage_profile`.
-- `remote_laptop_src/launch/nav_bringup.py` is the navigation-only bringup.
-
-## Simulation Run
-
-```bash
-export TURTLEBOT3_MODEL=burger
-ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
-```
-
-In a second terminal:
-
-```bash
-ros2 launch auto_explore global_bringup.py \
-  use_sim_time:=true \
-  enable_slam:=true \
-  enable_rviz:=false \
-  enable_fsm:=true \
-  enable_navigation:=true \
-  enable_markers:=true \
-  enable_pose_publisher:=true \
-  enable_docking:=false \
-  enable_shooter:=false
-```
-
-## Real Robot Run
-
-```bash
-ros2 launch turtlebot3_bringup robot.launch.py
-```
-
-Then launch the mission stack:
-
-```bash
-ros2 launch auto_explore global_bringup.py \
-  use_sim_time:=false \
-  enable_slam:=true \
-  enable_rviz:=true \
-  enable_fsm:=true \
-  enable_navigation:=true \
-  enable_markers:=true \
-  enable_pose_publisher:=true \
-  enable_docking:=true \
-  enable_shooter:=true \
-  shooter_enable_hardware:=true
-```
-
-If you need to pass shooter host or ultrasonic tuning arguments, launch `global_controller_bringup.py` directly because those tuning arguments are declared at the controller layer.
-
-## Documentation Map
+---
+## 📄 Documentation Map
 
 - [Requirements Specification](docs/requirements-specification.md)
 - [Concept of Operations](docs/con-ops.md)
@@ -89,8 +27,41 @@ If you need to pass shooter host or ultrasonic tuning arguments, launch `global_
 - [Areas for Improvement](docs/improvements.md)
 - [Appendix](docs/appendix.md)
 
-## Notes
+👉 **Visit our GitHub Pages site here**:  
+🔗 [https://kmyming.github.io/CDE2310_G10_2526/](https://kmyming.github.io/CDE2310_G10_2526/)
 
+## 📂 Project Structure
+
+This repository includes:
+
+- `/docs`: Website content served via GitHub Pages
+- `/src`: ROS2 packages and simulation files
+- CAD models and system schematics
+- Launch and config files for simulation and real-world deployment
+
+---
+
+## 🧥 Meet the Team
+
+<div style="text-align: center;">
+  <img src="docs/assets/team.jpg" alt="team" />
+</div>
+
+
+---
+
+## 🛠️ Tech Stack
+
+- ROS2 Humble
+- SLAM Toolbox
+- Custom Open-source ROS2 Frontier-based exploration
+- OpenCV ArUco marker detection
+- Python / C++
+- Custom 3D-printed parts + electronics integration
+
+---
+
+
+## Notes
 - `CHANGELOG.md` is the repository release-history reference.
-- The user-facing docs should stay markdown-first.
-- GitHub Pages is optional presentation, not the primary submission artifact.
+
