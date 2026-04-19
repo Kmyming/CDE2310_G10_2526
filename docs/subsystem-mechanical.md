@@ -1,6 +1,4 @@
 ---
-title: Mechanical Subsystem
-description: Physical packaging, launcher structure, and design tradeoffs.
 ---
 
 ## 🔗 Navigation

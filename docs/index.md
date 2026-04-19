@@ -1,6 +1,4 @@
 ---
-title: Fundamentals of System Design – CDE2310
-description: Entry point for the project documentation set.
 ---
 # Fundamentals of System Design – CDE2310
 
@@ -53,7 +51,7 @@ Core subsystems:
 ## Final Navigation Run (Sped Up)
 <div style="display: flex; justify-content: center; margin: 2em 0;">
   <video width='780' height='480' controls>
-    <source src="docs/assets/Uncropped Rviz.mp4" type="video/mp4">
+    <source src="assets/rviz.mp4" type="video/mp4">
     Your browser does not support the video tag.
   </video>
 </div>

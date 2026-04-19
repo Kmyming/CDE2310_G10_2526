@@ -1,6 +1,4 @@
 ---
-title: User Manual
-description: Operator setup, run steps, troubleshooting, and BOM.
 ---
 
 ## 🔗 Navigation
