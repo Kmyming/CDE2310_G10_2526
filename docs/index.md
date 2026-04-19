@@ -2,7 +2,7 @@
 ---
 # Fundamentals of System Design – CDE2310
 
-## System Overview (Tech Stack, Subsystems)
+## System Overview
 
 This project is a ROS2-based autonomous mission stack using LiDAR, RPi Camera & Rack-and-Pinion Spring-Loaded Launcher for a warehouse maze environment deployment.
 
