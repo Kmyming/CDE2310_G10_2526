@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  function renderMermaidBlocks() {
+    const codeBlocks = document.querySelectorAll('pre code.language-mermaid, pre code.mermaid');
+
+    codeBlocks.forEach((codeBlock, index) => {
+      const pre = codeBlock.parentElement;
+      if (!pre || pre.dataset.mermaidProcessed === 'true') {
+        return;
+      }
+
+      const container = document.createElement('div');
+      container.className = 'mermaid';
+      container.id = `mermaid-diagram-${index}`;
+      container.textContent = codeBlock.textContent;
+
+      pre.dataset.mermaidProcessed = 'true';
+      pre.replaceWith(container);
+    });
+
+    if (window.mermaid) {
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'loose',
+        theme: 'default'
+      });
+
+      window.mermaid.run({ querySelector: '.mermaid' });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderMermaidBlocks);
+  } else {
+    renderMermaidBlocks();
+  }
+</script>
+
+</head>
+<body>
+  <main>
+    <h1 id="fundamentals-of-system-design--cde2310">Fundamentals of System Design – CDE2310</h1>
+
+<h2 id="system-overview-tech-stack-subsystems">System Overview (Tech Stack, Subsystems)</h2>
+
+<p>This project is a ROS2-based autonomous mission stack using LiDAR, RPi Camera &amp; Rack-and-Pinion Spring-Loaded Launcher for a warehouse maze environment deployment.</p>
+
+<p>Tech stack:</p>
+
+<ul>
+  <li>ROS2 Humble</li>
+  <li>SLAM Toolbox</li>
+  <li>Custom Open-source ROS2 Frontier-based exploration</li>
+  <li>OpenCV ArUco marker detection</li>
+  <li>Python / C++</li>
+</ul>
+
+<p>Core subsystems:</p>
+
+<ul>
+  <li>Navigation and FSM orchestration</li>
+  <li>Docking at static and dynamic delivery zones via ArUco marker detection</li>
+  <li>3D-printed Spring-loaded rack-and-pinion launcher system</li>
+  <li>Fully simulated in Gazebo</li>
+  <li>Successful static and dynamic ball delivery and autonomous exploration &amp; navigation of warehouse maze environment</li>
+</ul>
+
+<hr />
+
+<h2 id="quick-links">Quick Links</h2>
+
+<ul>
+  <li><a href="requirements-specification.md">Requirements Specification</a></li>
+  <li><a href="high-level-design.md">High Level Design</a></li>
+  <li><a href="subsystem-nav-fsm.md">Software Subsystem: Navigation and FSM</a></li>
+  <li><a href="subsystem-mechanical.md">Mechanical Subsystem</a></li>
+  <li><a href="testing-documentation.md">Testing Documentation</a></li>
+</ul>
+
+<h2 id="our-robot">Our Robot</h2>
+<div style="text-align: center;">
+  <img src="assets/subsystem-mechanical/images/final.jpg" alt="final" width="27.7%" />
+   <img src="assets/subsystem-mechanical/images/finalCAD.png" alt="finalCAD" width="40%" />
+</div>
+
+<h2 id="final-navigation-run-sped-up">Final Navigation Run (Sped Up)</h2>
+<div style="display: flex; justify-content: center; margin: 2em 0;">
+  <video width="780" height="480" controls="">
+    <source src="assets/rviz.mp4" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+</div>
+
+<h2 id="full-mission-run">Full Mission Run:</h2>
+<p><a href="https://youtu.be/GBjxFKn8IDs">Watch the Video</a></p>
+
+<h2 id="the-team">The Team</h2>
+<div style="text-align: center;">
+  <img src="assets/team.jpg" alt="team" />
+</div>
+
+
+  </main>
+</body>
+</html>
