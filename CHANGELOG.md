@@ -1,6 +1,10 @@
 # Changelog
+## [2.16.1] - 2026-04-18
+### Documentation
+- docs(con-ops): Expanded the Concept of Operations document with detailed mission phases, system overview, operational sequences, and fault recovery scenarios.
 
 ## [2.16.0] - 2026-04-18
+Iterative redesign of the payload launcher for improved feeding, increased launch force, and reduced gear slipping, based on testing results.
 ### Added / Changed
 - feat(payload): Added servo gate mount
 - feat (payload): launcher design iteration to prevent gear slipping (add servo cover, reduce servo screw hole diameter, reduce gear distance, increase wall thickness to reduce launcher flex)
