@@ -39,7 +39,6 @@ class ShooterController(Node):
 
         # Legacy params retained for compatibility.
         self.declare_parameter('ultrasonic_echo_timeout_s', 0.03)
-        self.declare_parameter('ultrasonic_poll_sleep_s', 0.0005)
 
         # New ultrasonic filtering params from the tested node.
         self.declare_parameter('ultrasonic_sample_count', 5)
@@ -82,7 +81,6 @@ class ShooterController(Node):
         self.dynamic_poll_interval_s = float(self.get_parameter('dynamic_poll_interval_s').value)
 
         self.ultrasonic_echo_timeout_s = float(self.get_parameter('ultrasonic_echo_timeout_s').value)
-        self.ultrasonic_poll_sleep_s = float(self.get_parameter('ultrasonic_poll_sleep_s').value)
 
         self.ultrasonic_sample_count = int(self.get_parameter('ultrasonic_sample_count').value)
         self.ultrasonic_sample_gap_s = float(self.get_parameter('ultrasonic_sample_gap_s').value)

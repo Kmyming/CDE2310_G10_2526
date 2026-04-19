@@ -3,7 +3,7 @@ title: "Software Subsystem: Navigation and FSM"
 description: "Frontier exploration, path planning, and mission state-machine design."
 ---
 
-# 🔗 Navigation
+## 🔗 Navigation
 
 - [Home](index.md)
 - [Requirements Specification](requirements-specification.md)
