@@ -1,14 +1,8 @@
-<script type="module">
-  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-
-  mermaid.initialize({
-    startOnLoad: false,
-    securityLevel: 'loose',
-    theme: 'default'
-  });
-
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
   function renderMermaidBlocks() {
-    const codeBlocks = document.querySelectorAll('pre code.language-mermaid');
+    const codeBlocks = document.querySelectorAll('pre code.language-mermaid, pre code.mermaid');
+
     codeBlocks.forEach((codeBlock, index) => {
       const pre = codeBlock.parentElement;
       if (!pre || pre.dataset.mermaidProcessed === 'true') {
@@ -20,11 +14,19 @@
       container.id = `mermaid-diagram-${index}`;
       container.textContent = codeBlock.textContent;
 
-      pre.replaceWith(container);
       pre.dataset.mermaidProcessed = 'true';
+      pre.replaceWith(container);
     });
 
-    mermaid.run({ querySelector: '.mermaid' });
+    if (window.mermaid) {
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'loose',
+        theme: 'default'
+      });
+
+      window.mermaid.run({ querySelector: '.mermaid' });
+    }
   }
 
   if (document.readyState === 'loading') {
