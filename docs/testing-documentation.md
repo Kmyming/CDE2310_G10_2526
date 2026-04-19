@@ -248,10 +248,10 @@ Expected: the ArUco detection node should publish heartbeat/debug output on `/ar
 - The published pose output was stable enough to be used directly by the downstream docking subsystem
 
 **Evidence:**
-- Setup Image: [ArUco Detection Validation](../testing-media/videos/Aruco_Test_d1.jpg)
-- Screenshot: [/marker_detected output](../testing-media/videos/Aruco_marker_detected.png)
-- Screenshot: [/tf output](../testing-media/videos/Aruco_tf.png)
-- Screenshot: [/arUco/debug output](../testing-media/videos/Aruco_aruco_debug.png)
+- Setup Image: [ArUco Detection Validation](../testing-media/images/Aruco_Test_d1.jpg)
+- Screenshot: [/marker_detected output](../testing-media/images/Aruco_marker_detected.png)
+- Screenshot: [/tf output](../testing-media/images/Aruco_tf.png)
+- Screenshot: [/arUco/debug output](../testing-media/images/Aruco_aruco_debug.png)
 
 **Key Findings:**
 - **Heartbeat output worked correctly:** the node continuously indicated that the subsystem was running
