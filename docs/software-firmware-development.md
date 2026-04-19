@@ -1,6 +1,4 @@
 ---
-title: Software and Firmware Development
-description: Build, launch, versioning, and CI workflow documentation.
 ---
 
 ## 🔗 Navigation

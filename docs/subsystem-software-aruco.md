@@ -1,6 +1,4 @@
 ---
-title: "Software Subsystem: ArUco Marker Detection"
-description: "Camera-based ArUco detection, pose estimation, TF publication, and mission-logic visibility signaling."
 ---
 
 ## 🔗 Navigation

@@ -1,6 +1,4 @@
 ---
-title: Concept of Operations
-description: Operator workflow and mission behavior.
 ---
 
 ## 🔗 Navigation
@@ -86,33 +84,6 @@ flowchart TD
     H -->|No| B
     H -->|Yes| I[End Mission]
 ```
-
-## Startup Sequence
-
-1. Power on the TurtleBot3 and the Raspberry Pi. Confirm the LiDAR, camera, and motor controller are active.
-2. On the remote laptop, source the ROS 2 workspace:
-   ```bash
-   source install/setup.bash
-   ```
-3. Launch the full system bringup (real hardware):
-   ```bash
-   ros2 launch <package_name> bringup_real.launch.py
-   ```
-4. Confirm the following topics are actively publishing:
-   - `/scan` — LiDAR data
-   - `/odom` — Odometry
-   - `/camera/image_raw` — Camera feed
-   - `/map` — SLAM occupancy grid
-5. Confirm the following nodes are running:
-   - `fsm_controller`
-   - `exploration_controller`
-   - `docking_controller`
-   - `aruco_pose_streamer`
-   - `shooter_controller`
-6. Place the robot at the start position and confirm no obstacles are within the LiDAR's minimum range.
-7. The robot will begin exploring autonomously once all nodes are healthy.
-
----
 
 ## Exploration Phase
 
