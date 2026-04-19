@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  function renderMermaidBlocks() {
+    const codeBlocks = document.querySelectorAll('pre code.language-mermaid, pre code.mermaid');
+
+    codeBlocks.forEach((codeBlock, index) => {
+      const pre = codeBlock.parentElement;
+      if (!pre || pre.dataset.mermaidProcessed === 'true') {
+        return;
+      }
+
+      const container = document.createElement('div');
+      container.className = 'mermaid';
+      container.id = `mermaid-diagram-${index}`;
+      container.textContent = codeBlock.textContent;
+
+      pre.dataset.mermaidProcessed = 'true';
+      pre.replaceWith(container);
+    });
+
+    if (window.mermaid) {
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'loose',
+        theme: 'default'
+      });
+
+      window.mermaid.run({ querySelector: '.mermaid' });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderMermaidBlocks);
+  } else {
+    renderMermaidBlocks();
+  }
+</script>
+
+</head>
+<body>
+  <main>
+    <h2 id="-navigation">🔗 Navigation</h2>
+
+<ul>
+  <li><a href="index.md">Home</a></li>
+  <li><a href="requirements-specification.md">Requirements Specification</a></li>
+  <li><a href="con-ops.md">Concept of Operations</a></li>
+  <li><a href="high-level-design.md">High Level Design</a></li>
+  <li><a href="subsystem-nav-fsm.md">Software Subsystem: Navigation and FSM</a></li>
+  <li><a href="subsystem-software-aruco.md">Software Subsystem: ArUco Marker Detection</a></li>
+  <li><a href="subsystem-mechanical.md">Mechanical Subsystem</a></li>
+  <li><a href="subsystem-electrical.md">Electrical Subsystem</a></li>
+  <li><a href="interface-control-document.md">Interface Control Document</a></li>
+  <li><a href="software-firmware-development.md">Software and Firmware Development</a></li>
+  <li><a href="testing-documentation.md">Testing Documentation</a></li>
+  <li><a href="user-manual.md">User Manual</a></li>
+  <li><a href="improvements.md">Areas for Improvement</a></li>
+  <li><a href="appendix.md">Appendix</a></li>
+</ul>
+
+<hr />
+
+<h1 id="concept-of-operations">Concept of Operations</h1>
+
+<h2 id="mission-context">Mission Context</h2>
+
+<p>The robot is an autonomous mobile robot (AMR) built on a TurtleBot3 Burger platform, designed to operate in a randomised, unknown warehouse-style arena. Its mission is to autonomously explore the environment, detect ArUco fiducial markers positioned near two delivery receptacles (one static, one dynamic), dock precisely in front of each receptacle, and deliver three ping-pong balls per receptacle using a rack-and-pinion launcher mechanism. The entire mission must be completed within a <strong>25-minute execution window</strong>.</p>
+
+<p>There are two delivery zones:</p>
+
+<ul>
+  <li><strong>Static receptacle</strong> — a fixed delivery target identified by ArUco marker ID <code class="language-plaintext highlighter-rouge">0</code>.</li>
+  <li><strong>Dynamic receptacle</strong> — a moving delivery target identified by ArUco marker ID <code class="language-plaintext highlighter-rouge">1</code>, where an ultrasonic sensor is used to detect when the moving receptacle passes into range before triggering delivery.</li>
+</ul>
+
+<p>The mission ends when both delivery zones have been serviced, or when the mission timer expires.</p>
+
+<hr />
+
+<h2 id="system-overview">System Overview</h2>
+
+<p>The robot integrates the following subsystems:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Subsystem</th>
+      <th>Role</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Navigation &amp; SLAM</td>
+      <td>Frontier-based exploration using a 2D LiDAR occupancy grid</td>
+    </tr>
+    <tr>
+      <td>Finite State Machine (FSM)</td>
+      <td>Top-level mission orchestration and state arbitration</td>
+    </tr>
+    <tr>
+      <td>ArUco Marker Detection</td>
+      <td>Camera-based detection and 6-DOF pose estimation of delivery zone markers</td>
+    </tr>
+    <tr>
+      <td>Docking Controller</td>
+      <td>Precision alignment and approach to the detected marker</td>
+    </tr>
+    <tr>
+      <td>Shooter / Launcher</td>
+      <td>Sequential delivery of ping-pong balls into the receptacle</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>All subsystems communicate over ROS 2 topics. The FSM acts as the central arbiter, consuming status signals from all subsystems and issuing state transitions accordingly.</p>
+
+<hr />
+
+<h2 id="normal-operating-scenario">Normal Operating Scenario</h2>
+
+<ol>
+  <li>The operator places the robot at the designated start position in the arena, loads 9 ping-pong balls into the tube, and ensures all hardware is powered and functioning.</li>
+  <li>The operator builds and sources the ROS 2 workspace, then launches the top-level bringup file for real hardware.</li>
+  <li>The robot boots into the <code class="language-plaintext highlighter-rouge">EXPLORE</code> state. Navigation begins autonomously — no further operator input is required during the mission.</li>
+  <li>As the robot explores, the camera continuously processes frames for ArUco markers. When a new, unvisited marker is detected, the FSM transitions to <code class="language-plaintext highlighter-rouge">DOCK</code>.</li>
+  <li>The docking controller aligns the robot perpendicularly in front of the marker and drives forward until the final proximity threshold is met.</li>
+  <li>On successful docking, the FSM transitions to <code class="language-plaintext highlighter-rouge">LAUNCH</code>. The shooter controller delivers three ping-pong balls into the receptacle.
+    <ul>
+      <li>For the <strong>static receptacle</strong>: three shots are fired with fixed inter-shot delays.</li>
+      <li>For the <strong>dynamic receptacle</strong>: the ultrasonic sensor polls for the moving receptacle to enter range before each shot, synchronising delivery with receptacle position.</li>
+    </ul>
+  </li>
+  <li>After the shooting sequence completes, the FSM transitions to <code class="language-plaintext highlighter-rouge">BACKUP</code> (the robot reverses for ~2 seconds to clear the delivery zone), then returns to <code class="language-plaintext highlighter-rouge">EXPLORE</code>.</li>
+  <li>Steps 4–7 repeat for the second delivery zone.</li>
+  <li>Once both markers have been visited and the map is fully explored, the FSM transitions to <code class="language-plaintext highlighter-rouge">END</code> and the robot halts.</li>
+</ol>
+
+<hr />
+
+<h2 id="system-workflow-flowchart">System Workflow Flowchart</h2>
+
+<pre><code class="language-mermaid">flowchart TD
+    A[Start / Mission Begin] --&gt; B[Navigation / Explore]
+    B --&gt; C{Unvisited marker detected?}
+    C --&gt;|No| B
+    C --&gt;|Yes| D[Docking]
+    D --&gt; E{Docking successful?}
+    E --&gt;|No| B
+    E --&gt;|Yes| F[Launching]
+    F --&gt; G[Backup]
+    G --&gt; H{Both delivery zones completed and map fully explored?}
+    H --&gt;|No| B
+    H --&gt;|Yes| I[End Mission]
+</code></pre>
+
+<h2 id="exploration-phase">Exploration Phase</h2>
+
+<ul>
+  <li>The navigation controller (<code class="language-plaintext highlighter-rouge">exploration_controller</code>) implements a <strong>frontier-based exploration</strong> strategy. The occupancy grid from SLAM is analysed to identify frontier cells — known free cells adjacent to unknown space.</li>
+  <li>Frontiers are grouped and scored by a ratio of frontier size to path distance. The best frontier group is selected as the next navigation target.</li>
+  <li>A B-spline is fitted to the A* path for smooth traversal. A pure-pursuit controller tracks the path.</li>
+  <li>Local obstacle avoidance (using LiDAR scan sectors) is layered on top of path following, with tunable avoidance distances.</li>
+  <li>Exploration concludes when no new frontier groups remain, at which point <code class="language-plaintext highlighter-rouge">/map_explored</code> is published <code class="language-plaintext highlighter-rouge">True</code>.</li>
+</ul>
+
+<hr />
+
+<h2 id="marker-detection-phase">Marker Detection Phase</h2>
+
+<ul>
+  <li>The <code class="language-plaintext highlighter-rouge">aruco_pose_streamer</code> node subscribes to <code class="language-plaintext highlighter-rouge">/camera/image_raw</code> and processes every frame using OpenCV’s ArUco detector with the <code class="language-plaintext highlighter-rouge">DICT_4X4_250</code> dictionary.</li>
+  <li>Camera intrinsics are loaded from <code class="language-plaintext highlighter-rouge">/camera/camera_info</code>. A fallback pinhole model is used if intrinsics are invalid.</li>
+  <li>When a marker is detected, its 6-DOF pose (translation vector <code class="language-plaintext highlighter-rouge">tvec</code> and rotation vector <code class="language-plaintext highlighter-rouge">rvec</code>) is estimated using <code class="language-plaintext highlighter-rouge">cv2.aruco.estimatePoseSingleMarkers</code>.</li>
+  <li>The pose is broadcast as a TF transform (<code class="language-plaintext highlighter-rouge">aruco_marker_&lt;id&gt;</code>) and a <code class="language-plaintext highlighter-rouge">/marker_detected</code> signal (<code class="language-plaintext highlighter-rouge">Bool</code>) is published to the FSM.</li>
+  <li>The FSM reads the marker’s child frame ID suffix to determine the zone: <code class="language-plaintext highlighter-rouge">aruco_marker_0</code> → <code class="language-plaintext highlighter-rouge">static</code>, <code class="language-plaintext highlighter-rouge">aruco_marker_1</code> → <code class="language-plaintext highlighter-rouge">dynamic</code>.</li>
+  <li>Each zone is tracked in <code class="language-plaintext highlighter-rouge">visited_markers</code>. Once a zone is marked as visited, further detections of that zone are ignored.</li>
+</ul>
+
+<hr />
+
+<h2 id="docking-phase">Docking Phase</h2>
+
+<p>The docking controller (<code class="language-plaintext highlighter-rouge">docking_controller</code>) operates as an independent state machine with the following states:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>State</th>
+      <th>Behaviour</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">IDLE</code></td>
+      <td>Waits for FSM to signal <code class="language-plaintext highlighter-rouge">DOCK</code> and for a valid marker transform to be available.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">SEARCH</code></td>
+      <td>Rotates in place until the marker is centred horizontally (<code class="language-plaintext highlighter-rouge">tx ≈ 0</code>).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">APPROACH_1</code></td>
+      <td>Drives straight toward the marker until <code class="language-plaintext highlighter-rouge">tz &lt; 0.30 m</code>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">TURN_SIDE</code></td>
+      <td>Rotates by <code class="language-plaintext highlighter-rouge">(π/2 − θ)</code> to begin the perpendicular approach manoeuvre.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">DRIVE_SIDE</code></td>
+      <td>Drives laterally to reach the perpendicular line in front of the marker.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">TURN_FACE_MARKER</code></td>
+      <td>Rotates to re-face the marker directly (<code class="language-plaintext highlighter-rouge">tx ≈ 0</code>).</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">FINAL_APPROACH</code></td>
+      <td>Drives straight toward the marker until <code class="language-plaintext highlighter-rouge">tz &lt; 0.10 m</code> or front LiDAR reads <code class="language-plaintext highlighter-rouge">&lt; 0.20 m</code>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">DONE</code></td>
+      <td>Stops motion, publishes <code class="language-plaintext highlighter-rouge">/dock_done = True</code>, returns to <code class="language-plaintext highlighter-rouge">IDLE</code>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ABORT</code></td>
+      <td>Stops motion, publishes <code class="language-plaintext highlighter-rouge">/dock_done = False</code>, returns to <code class="language-plaintext highlighter-rouge">IDLE</code>.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">OBSTACLE_AVOIDANCE</code></td>
+      <td>Temporarily overrides docking motion to clear a proximate obstacle.</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">SPECIAL_SEARCH</code></td>
+      <td>After obstacle avoidance, performs a 360° rotation scan to re-acquire the marker.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Watchdog conditions</strong> (both trigger <code class="language-plaintext highlighter-rouge">ABORT</code>):</p>
+
+<ul>
+  <li>Marker continuously invisible for <strong>30 seconds</strong> during any active docking state.</li>
+  <li>Any single docking state active for more than <strong>45 seconds</strong>.</li>
+</ul>
+
+<hr />
+
+<h2 id="launcher--shooter-phase">Launcher / Shooter Phase</h2>
+
+<p>The <code class="language-plaintext highlighter-rouge">shooter_controller</code> node receives a <code class="language-plaintext highlighter-rouge">/shoot_type</code> command (<code class="language-plaintext highlighter-rouge">static</code> or <code class="language-plaintext highlighter-rouge">dynamic</code>) from the FSM on entering the <code class="language-plaintext highlighter-rouge">LAUNCH</code> state.</p>
+
+<p><strong>Static delivery sequence:</strong></p>
+
+<ol>
+  <li>Shot 1 fires immediately.</li>
+  <li>A short delay (~0.1 s) separates shot 1 and shot 2.</li>
+  <li>A longer delay (~7.1 s) separates shot 2 and shot 3.</li>
+</ol>
+
+<p><strong>Dynamic delivery sequence:</strong> The ultrasonic sensor polls the distance to the moving receptacle at regular intervals. Each of the three shots follows a two-pass sequence:</p>
+
+<ul>
+  <li><strong>Load pass</strong>: the rack engages and the gate opens/closes to seat a ball.</li>
+  <li><strong>Launch pass</strong>: triggered only when the ultrasonic sensor reads <code class="language-plaintext highlighter-rouge">distance ≤ 0.70 m</code>, indicating the moving receptacle is within delivery range.</li>
+</ul>
+
+<p>Each shot cycle uses a rack servo (continuous rotation) to pull back the launcher, a gate servo to release the ball, and timing parameters configured via ROS 2 parameters at launch time. Hardware actuation is gated by the <code class="language-plaintext highlighter-rouge">enable_hardware</code> parameter — when <code class="language-plaintext highlighter-rouge">False</code>, the node runs in simulation mode.</p>
+
+<p>A minimum hold duration of <strong>15 seconds</strong> is enforced in the <code class="language-plaintext highlighter-rouge">LAUNCH</code> state before the FSM accepts a completion signal, ensuring all shots have time to execute.</p>
+
+<hr />
+
+<h2 id="post-delivery-backup-phase">Post-Delivery Backup Phase</h2>
+
+<p>After the shooter signals completion, the FSM transitions to <code class="language-plaintext highlighter-rouge">BACKUP</code>. The robot reverses at <code class="language-plaintext highlighter-rouge">0.1 m/s</code> for <strong>2 seconds</strong> before returning to <code class="language-plaintext highlighter-rouge">EXPLORE</code>. This prevents the robot from immediately attempting to re-dock with the just-visited marker.</p>
+
+<hr />
+
+<h2 id="shutdown-sequence">Shutdown Sequence</h2>
+
+<ol>
+  <li>Allow the mission to reach the <code class="language-plaintext highlighter-rouge">END</code> state naturally, or press <code class="language-plaintext highlighter-rouge">Ctrl+C</code> to interrupt all nodes.</li>
+  <li>Confirm the robot has stopped moving (<code class="language-plaintext highlighter-rouge">/cmd_vel</code> publishes zero-velocity).</li>
+  <li>Power down the TurtleBot3 motors and Raspberry Pi safely.</li>
+  <li>Remove any remaining ping-pong balls from the magazine before storing the robot.</li>
+  <li>Kill any stale ROS 2 daemon processes before the next run:
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ros2 daemon stop
+pkill <span class="nt">-f</span> ros2
+</code></pre></div>    </div>
+  </li>
+</ol>
+
+<hr />
+
+<h2 id="fault--recovery-scenarios">Fault / Recovery Scenarios</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Fault</th>
+      <th>Symptom</th>
+      <th>Response</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Marker lost during docking</td>
+      <td><code class="language-plaintext highlighter-rouge">docking_controller</code> logs “Marker lost”</td>
+      <td>Docking aborts (<code class="language-plaintext highlighter-rouge">/dock_done = False</code>); FSM returns to <code class="language-plaintext highlighter-rouge">EXPLORE</code></td>
+    </tr>
+    <tr>
+      <td>Marker invisible &gt; 30 s</td>
+      <td>Watchdog triggers in docking controller</td>
+      <td>State transitions to <code class="language-plaintext highlighter-rouge">ABORT</code> → <code class="language-plaintext highlighter-rouge">IDLE</code></td>
+    </tr>
+    <tr>
+      <td>Docking state stalls &gt; 45 s</td>
+      <td>Per-state watchdog fires</td>
+      <td>State transitions to <code class="language-plaintext highlighter-rouge">ABORT</code> → <code class="language-plaintext highlighter-rouge">IDLE</code></td>
+    </tr>
+    <tr>
+      <td>Obstacle during docking</td>
+      <td>Front LiDAR reads within <code class="language-plaintext highlighter-rouge">robot_r</code></td>
+      <td><code class="language-plaintext highlighter-rouge">OBSTACLE_AVOIDANCE</code> activates; <code class="language-plaintext highlighter-rouge">SPECIAL_SEARCH</code> follows to re-acquire marker</td>
+    </tr>
+    <tr>
+      <td>Shooter hardware failure</td>
+      <td><code class="language-plaintext highlighter-rouge">shooter_controller</code> logs error, publishes <code class="language-plaintext highlighter-rouge">/shoot_done = False</code></td>
+      <td>FSM returns to <code class="language-plaintext highlighter-rouge">EXPLORE</code>; zone is not marked visited</td>
+    </tr>
+    <tr>
+      <td>No frontier groups found</td>
+      <td>Navigation publishes <code class="language-plaintext highlighter-rouge">/map_explored = True</code></td>
+      <td>FSM checks marker count; transitions to <code class="language-plaintext highlighter-rouge">END</code> if both zones visited, else continues waiting</td>
+    </tr>
+    <tr>
+      <td>Ultrasonic sensor no-read</td>
+      <td><code class="language-plaintext highlighter-rouge">_read_ultrasonic_distance_m</code> returns <code class="language-plaintext highlighter-rouge">None</code></td>
+      <td>Dynamic delivery continues polling; no shot fires until a valid distance is read</td>
+    </tr>
+    <tr>
+      <td>Invalid camera intrinsics</td>
+      <td><code class="language-plaintext highlighter-rouge">aruco_pose_streamer</code> logs fallback warning</td>
+      <td>Fallback pinhole model used; detection continues with reduced accuracy</td>
+    </tr>
+    <tr>
+      <td>SLAM map not ready</td>
+      <td><code class="language-plaintext highlighter-rouge">exploration_controller</code> waits in loop</td>
+      <td>Navigation holds until <code class="language-plaintext highlighter-rouge">/map</code>, <code class="language-plaintext highlighter-rouge">/odom</code>, and <code class="language-plaintext highlighter-rouge">/scan</code> are all available</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="operator-responsibilities">Operator Responsibilities</h2>
+
+<ul>
+  <li>Inspect and confirm all 9 ping-pong balls are correctly loaded into the magazine before launch.</li>
+  <li>Confirm the <code class="language-plaintext highlighter-rouge">enable_hardware</code> parameter is set correctly (<code class="language-plaintext highlighter-rouge">True</code> for physical robot, <code class="language-plaintext highlighter-rouge">False</code> for simulation).</li>
+  <li>Supply the correct launch file for the target environment (real hardware vs. Gazebo).</li>
+  <li>Monitor <code class="language-plaintext highlighter-rouge">/rosout</code> and node logs for warnings during the early exploration phase.</li>
+  <li>Do not intervene or manually move the robot once the mission has started; any physical interference may corrupt the SLAM map.</li>
+  <li>Ensure the arena is set up as specified before starting the mission timer.</li>
+</ul>
+
+  </main>
+</body>
+</html>
