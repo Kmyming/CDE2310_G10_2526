@@ -1,3 +1,7 @@
+## [2.16.3] - 2026-04-19
+### Documentation
+- docs(high-level-design): Added a comprehensive High Level Design document detailing system architecture, data flow, mission states, and subsystem descriptions.
+
 ## [2.16.2] - 2026-04-19
 ### Documentation
 - docs(requirements-spec): Added a comprehensive requirements specification document covering functional, non-functional, performance, and safety requirements.
